@@ -28,7 +28,7 @@ import weakref
 
 def run(application_class):
     """Run a jinxes application subclass."""
-    locale.setlocale(locale.LC_ALL,"")
+    locale.setlocale(locale.LC_ALL, "")
     curses.wrapper(application_class)
 
 
@@ -175,7 +175,6 @@ class Application(object):
                 self.available_brush_ids.append(int_id)
                 del self.allocated_brush_ids[str_id]
 
-
     def run(self):
         """Endless processing loop."""
         try:
@@ -209,7 +208,6 @@ class Application(object):
         if method:
             method(current)
 
-
     def tick(self, current):
         """Do frame actions."""
         pass
@@ -223,5 +221,3 @@ class Application(object):
             if actor.visible:
                 self.draw(actor)
         self.moved_actors = weakref.WeakValueDictionary()
-
-

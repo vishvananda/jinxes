@@ -72,7 +72,6 @@ class TestCurses(object):
         return int_id
 
 
-
 class TestNotifier(object):
     def notify_created(self, actor):
         pass
@@ -82,6 +81,7 @@ class TestNotifier(object):
 
     def notify_visible(self, actor):
         pass
+
 
 class ApplicationTestCase(unittest.TestCase):
     """Test application functionality"""
