@@ -15,16 +15,85 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Tests for the jinxes library
+Tests for the jinxes application module
 """
 
 import curses
 import locale
 import unittest
+
 import mox
 
-from jinxes import actor
 from jinxes import application
+
+
+class TestApp(application.Application):
+    """Test app which supports dynamic method setting on init."""
+    def __init__(self, scr, **kwargs):
+        for key, value in kwargs.iteritems():
+            setattr(self, key, value)
+        super(TestApp, self).__init__(scr)
+
+
+class CursesTestCase(unittest.TestCase):
+    """Tests usage of curses and scr."""
+    def setUp(self):
+        super(CursesTestCase, self).setUp()
+        self.mox = mox.Mox()
+
+    def tearDown(self):
+        super(CursesTestCase, self).tearDown()
+        application.curses = curses
+        application.locale = locale
+
+    def test_run_curses(self):
+
+        class FakeApp(application.Application):
+            def run():
+                pass
+
+        application.locale = self.mox.CreateMockAnything()
+        application.curses = self.mox.CreateMockAnything()
+        scr = FakeScr()
+        application.locale.LC_ALL = locale.LC_ALL
+        application.locale.setlocale(locale.LC_ALL, "")
+        application.curses.wrapper(FakeApp)
+        self.mox.ReplayAll()
+        application.run(FakeApp)
+        self.mox.VerifyAll()
+
+    def test_create_curses(self):
+
+        def run():
+            pass
+
+        application.curses = self.mox.CreateMockAnything()
+        scr = self.mox.CreateMockAnything()
+
+        application.curses.COLOR_PAIRS = 10
+        application.curses.curs_set(0)
+        application.curses.init_pair(1, mox.IgnoreArg(), mox.IgnoreArg())
+        application.curses.color_pair(1).AndReturn(1)
+        scr.bkgdset(ord(' '), 1)
+        scr.nodelay(1)
+        self.mox.ReplayAll()
+        TestApp(scr, run=run)
+        self.mox.VerifyAll()
+
+
+class FakeCurses(object):
+    """Fake implementation of curses which does nothing."""
+    COLOR_PAIRS = 10
+    ERR = curses.ERR
+
+    def curs_set(self, value):
+        pass
+
+    def init_pair(self, int_id, fg_color, bg_color):
+        pass
+
+    def color_pair(self, int_id):
+        return int_id
 
 
 class FakeScr(object):
@@ -53,73 +122,6 @@ class FakeScr(object):
         return 10, 10
 
 
-class TestApp(application.Application):
-    """Test app which supports dynamic method setting on init."""
-    def __init__(self, scr, **kwargs):
-        for key, value in kwargs.iteritems():
-            setattr(self, key, value)
-        super(TestApp, self).__init__(scr)
-
-
-class FakeCurses(object):
-    """Fake implementation of curses which does nothing."""
-    COLOR_PAIRS = 10
-    ERR = curses.ERR
-
-    def curs_set(self, value):
-        pass
-
-    def init_pair(self, int_id, fg_color, bg_color):
-        pass
-
-    def color_pair(self, int_id):
-        return int_id
-
-
-class CursesTestCase(unittest.TestCase):
-    """Tests usage of curses and scr."""
-    def setUp(self):
-        super(CursesTestCase, self).setUp()
-        self.mox = mox.Mox()
-
-    def tearDown(self):
-        super(CursesTestCase, self).tearDown()
-        application.curses = curses
-        application.locale = locale
-
-    def test_run_curses(self):
-        application.locale = self.mox.CreateMockAnything()
-        application.curses = self.mox.CreateMockAnything()
-        scr = FakeScr()
-
-        class FakeApp(application.Application):
-            def run():
-                pass
-
-        application.locale.LC_ALL = locale.LC_ALL
-        application.locale.setlocale(locale.LC_ALL, "")
-        application.curses.wrapper(FakeApp)
-        self.mox.ReplayAll()
-        application.run(FakeApp)
-        self.mox.VerifyAll()
-
-    def test_create_curses(self):
-        application.curses = self.mox.CreateMockAnything()
-        scr = self.mox.CreateMockAnything()
-
-        def run():
-            pass
-
-        application.curses.COLOR_PAIRS = 10
-        application.curses.curs_set(0)
-        application.curses.init_pair(1, mox.IgnoreArg(), mox.IgnoreArg())
-        application.curses.color_pair(1).AndReturn(1)
-        scr.bkgdset(ord(' '), 1)
-        scr.nodelay(1)
-        self.mox.ReplayAll()
-        TestApp(scr, run=run)
-        self.mox.VerifyAll()
-
 class ApplicationTestCase(unittest.TestCase):
     """Test application methods.
 
@@ -146,24 +148,3 @@ class ApplicationTestCase(unittest.TestCase):
         def tick(current):
             raise application.Exit()
         TestApp(self.scr, tick=tick)
-
-
-class ActorTestCase(unittest.TestCase):
-    """Test actor functionality.
-
-    Mocks Application Object to verify interactions with the
-    application object.
-    """
-
-    def setUp(self):
-        super(ActorTestCase, self).setUp()
-        self.mox = mox.Mox()
-
-    def test_create_actor(self):
-        app = self.mox.CreateMockAnything()
-        app.notify_created(mox.IgnoreArg())
-        app.notify_moved(mox.IgnoreArg())
-        app.notify_visible(mox.IgnoreArg())
-        self.mox.ReplayAll()
-        actor.Actor(app, 0, 0, 'A', None)
-        self.mox.VerifyAll()
