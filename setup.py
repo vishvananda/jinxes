@@ -26,7 +26,7 @@ config = {
     'url': 'https://github.com/vishvananda/jinxes',
     'author_email': 'vishvananda@gmail.com',
     'version': '0.1',
-    'install_requires': ['nose'],
+    'install_requires': [],
     'packages': ['jinxes'],
     'scripts': ['tag-the-flag'],
     'name': 'jinxes',
