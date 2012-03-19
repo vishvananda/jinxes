@@ -19,6 +19,7 @@ Tests for the jinxes application module
 """
 
 import curses
+import functools
 import locale
 import unittest
 
@@ -31,7 +32,8 @@ class TestApp(application.Application):
     """Test app which supports dynamic method setting on init."""
     def __init__(self, scr, **kwargs):
         for key, value in kwargs.iteritems():
-            setattr(self, key, value)
+            method = functools.partial(value, self)
+            setattr(self, key, method)
         super(TestApp, self).__init__(scr)
 
 
@@ -49,7 +51,7 @@ class CursesTestCase(unittest.TestCase):
     def test_run_curses(self):
 
         class FakeApp(application.Application):
-            def run():
+            def run(app):
                 pass
 
         application.locale = self.mox.CreateMockAnything()
@@ -64,7 +66,7 @@ class CursesTestCase(unittest.TestCase):
 
     def test_create_curses(self):
 
-        def run():
+        def run(app):
             pass
 
         application.curses = self.mox.CreateMockAnything()
@@ -122,6 +124,10 @@ class FakeScr(object):
         return 10, 10
 
 
+class FakeActor(object):
+    def __init__(self, actor_id):
+        self.id = actor_id
+
 class ApplicationTestCase(unittest.TestCase):
     """Test application methods.
 
@@ -139,12 +145,59 @@ class ApplicationTestCase(unittest.TestCase):
 
     def test_create(self):
 
-        def run():
+        def run(app):
             pass
         TestApp(self.scr, run=run)
 
-    def test_exit(self):
+    def test_tick_exit(self):
 
-        def tick(current):
+        def tick(app, current):
             raise application.Exit()
         TestApp(self.scr, tick=tick)
+
+    def test_actors(self):
+
+        def run(app):
+            actor1 = FakeActor(1)
+            app.notify_created(actor1)
+            self.assertEqual(dict(app.actors), {1: actor1})
+            actor2 = FakeActor(2)
+            app.notify_created(actor2)
+            self.assertEqual(dict(app.actors), {1: actor1, 2: actor2})
+            actor1 = None
+            self.assertEqual(dict(app.actors), {2: actor2})
+        TestApp(self.scr, run=run)
+
+    def test_moved_actors(self):
+
+        def run(app):
+            actor1 = FakeActor(1)
+            app.notify_moved(actor1)
+            self.assertEqual(dict(app.moved_actors), {1: actor1})
+            actor2 = FakeActor(2)
+            app.notify_moved(actor2)
+            self.assertEqual(dict(app.moved_actors), {1: actor1, 2: actor2})
+            actor1 = None
+            self.assertEqual(dict(app.moved_actors), {2: actor2})
+        TestApp(self.scr, run=run)
+
+    def test_visible_actors(self):
+
+        def run(app):
+            actor1 = FakeActor(1)
+            actor1.visible = True
+            app.notify_visible(actor1)
+            self.assertEqual(dict(app.visible_actors), {1: actor1})
+            actor2 = FakeActor(2)
+            actor2.visible = False
+            app.notify_visible(actor2)
+            self.assertEqual(dict(app.visible_actors), {1: actor1})
+            actor2.visible = True
+            app.notify_visible(actor2)
+            self.assertEqual(dict(app.visible_actors), {1: actor1, 2: actor2})
+            actor1.visible = False
+            app.notify_visible(actor1)
+            self.assertEqual(dict(app.visible_actors), {2: actor2})
+            actor2 = None
+            self.assertEqual(dict(app.visible_actors), {})
+        TestApp(self.scr, run=run)

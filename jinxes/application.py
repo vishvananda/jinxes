@@ -77,7 +77,7 @@ class Application(object):
 
     def notify_visible(self, actor):
         if actor.visible:
-            self.visible_actors[actor.id] = self
+            self.visible_actors[actor.id] = actor
         else:
             if actor.id in self.visible_actors:
                 del self.visible_actors[actor.id]
