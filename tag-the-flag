@@ -35,13 +35,16 @@ class Monster(actor.Actor):
                 x = self.x
             if y is None:
                 y = self.y
+            lines = []
+            lines.append('\0' + ' ' * self.hsize + '\0')
+            for line in self.lines:
+                lines.append(' ' + line + ' ')
+            lines.append('\0' + ' ' * self.hsize + '\0')
             coords = []
-            coords.append((x - 1, y))
-            for offset in xrange(self.size):
-                coords.append((x + offset, y))
-                coords.append((x + offset, y - 1))
-                coords.append((x + offset, y + 1))
-            coords.append((x + self.size, y))
+            for xoffset in xrange(self.hsize + 2):
+                for yoffset in xrange(self.vsize + 2):
+                    if ord(lines[yoffset][xoffset]):
+                        coords.append((x + xoffset - 1, y + yoffset - 1))
             return set(coords)
         return super(Monster, self).collisions(other, x, y)
 

@@ -83,7 +83,7 @@ class Application(object):
                 del self.visible_actors[actor.id]
 
     def notify_moving(self, actor):
-        self.clear(actor.x, actor.y, actor.size)
+        self.clear_actor(actor)
 
     def notify_moved(self, actor):
         self.moved_actors[actor.id] = actor
@@ -107,8 +107,8 @@ class Application(object):
     def try_move(self, actor, current, x, y):
         if self.paused:
             return False
-        if (x < self.left or x > self.right or
-            y < self.top or y > self.bottom):
+        if (x < self.left or x + actor.hsize > self.right or
+            y < self.top or y + actor.vsize > self.bottom):
             return False
         for other in self.actors.itervalues():
             collisions = actor.collisions(other, x, y)
@@ -123,9 +123,15 @@ class Application(object):
         Return True to allow the movement."""
         return False
 
-    def draw(self, actor):
+    def draw_actor(self, actor):
         """Draw an actor at location."""
-        self.write(actor.x, actor.y, actor.utf8, actor.brush)
+        for yoffset, line in enumerate(actor.lines):
+            for xoffset, char in enumerate(line):
+                if ord(char):
+                    self.write(actor.x + xoffset,
+                               actor.y + yoffset,
+                               char.encode('utf_8'),
+                               actor.brush)
 
     def write(self, x, y, text, brush=None):
         """Write a text string at location with brush."""
@@ -133,9 +139,19 @@ class Application(object):
             brush = self.default_brush
         self.scr.addstr(y, x, text, brush)
 
-    def clear(self, x, y, length=1, brush=None):
+    def clear_actor(self, actor):
+        """Draw an actor at location."""
+        for yoffset, line in enumerate(actor.lines):
+            for xoffset, char in enumerate(line):
+                if ord(char):
+                    self.clear(actor.x + xoffset,
+                               actor.y + yoffset,
+                               char.encode('utf_8'),
+                               actor.brush)
+
+    def clear(self, x, y, text, brush=None):
         """Clear the text at location."""
-        self.write(x, y, ' ' * length, brush)
+        self.write(x, y, ' ' * len(unicode(text, 'utf_8')), brush)
 
     def get_brush(self, fg_color=None, bg_color=None):
         """Get a brush represented by fg and bg color.
@@ -219,5 +235,5 @@ class Application(object):
 
         for actor in self.moved_actors.itervalues():
             if actor.visible:
-                self.draw(actor)
+                self.draw_actor(actor)
         self.moved_actors = weakref.WeakValueDictionary()

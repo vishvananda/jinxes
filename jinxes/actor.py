@@ -23,24 +23,29 @@ import uuid
 
 class Actor(object):
 
-    def __init__(self, app, x, y, text, brush, moved=None):
+    def __init__(self, app, x, y, lines, brush, moved=None):
         self.app = app
         self.x = x
         self.y = y
-        self.text = text
+        self.lines = lines
         self.brush = brush
         self.id = unicode(uuid.uuid4())
         self.app.notify_created(self)
         self.moved = moved
         self.visible = True
 
-    @property
-    def size(self):
-        return len(self.text)
+    def _get_lines(self):
+        return self._lines
 
-    @property
-    def utf8(self):
-        return self.text.encode('utf_8')
+    def _set_lines(self, value):
+        if isinstance(value, basestring):
+            self._lines = value.split('\n')
+        else:
+            self._lines = value
+        self.hsize = max(len(line) for line in self.lines)
+        self.vsize = len(self.lines)
+
+    lines = property(_get_lines, _set_lines)
 
     def move(self, current, x, y):
         if self.app.try_move(self, current, x, y):
@@ -80,6 +85,8 @@ class Actor(object):
         if y is None:
             y = self.y
         coords = []
-        for offset in xrange(self.size):
-            coords.append((x + offset, y))
+        for xoffset in xrange(self.hsize):
+            for yoffset in xrange(self.vsize):
+                if ord(self.lines[yoffset][xoffset]):
+                    coords.append((x + xoffset, y + yoffset))
         return set(coords)

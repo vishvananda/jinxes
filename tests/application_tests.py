@@ -128,6 +128,7 @@ class FakeActor(object):
     def __init__(self, actor_id):
         self.id = actor_id
 
+
 class ApplicationTestCase(unittest.TestCase):
     """Test application methods.
 
