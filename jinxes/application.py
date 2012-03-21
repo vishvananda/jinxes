@@ -92,16 +92,16 @@ class Application(object):
         self.dirty = True
         self.scr.clear()
         self.bottom, self.right = self.scr.getmaxyx()
-        self.top = 0
-        self.left = 0
-        self.bottom -= 1
-        self.right -= 1
         self.actors_by_location = []
         for x in xrange(self.right):
             ylist = []
             for y in xrange(self.bottom):
                 ylist.append([])
             self.actors_by_location.append(ylist)
+        self.top = 0
+        self.left = 0
+        self.bottom -= 1
+        self.right -= 1
 
     def border(self):
         self.scr.border()
