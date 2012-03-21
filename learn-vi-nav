@@ -76,15 +76,18 @@ class ViNav(application.Application):
     UPDATE_TICKS = 5
     SPAWN_TICKS = 5
     SPAWN_NUMBER = 5
-    FREQUENCY = 0.02
     NUM_WORDS = 80
+
+    def __init__(self, scr):
+        self.time_based = True
+        self.frequency = 0.02
+        super(ViNav, self).__init__(scr)
 
     def initialize(self, current):
         super(ViNav, self).initialize(current)
         self.setup(current)
 
     def setup(self, current):
-        self.time_based = False
         self.ticks = 0
         random.seed()
         self.words = {}
@@ -106,7 +109,7 @@ class ViNav(application.Application):
     def tick(self, current):
         """Do frame actions"""
 
-        if self.time_based and current - self.updated > self.FREQUENCY:
+        if self.time_based and current - self.updated > self.frequency:
             self.game_tick(current)
         if self.updated == current:
             for key in list(self.words.iterkeys()):
@@ -134,6 +137,12 @@ class ViNav(application.Application):
 
     def handle_t(self, current):
         self.time_based = not self.time_based
+
+    def handle_o(self, current):
+        self.frequency += 0.001
+
+    def handle_p(self, current):
+        self.frequency -= 0.001
 
     def handle_k(self, current):
         self.crsr.move(current, self.crsr.x, self.crsr.y - 1)
