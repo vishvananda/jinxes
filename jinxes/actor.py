@@ -23,16 +23,18 @@ import uuid
 
 class Actor(object):
 
-    def __init__(self, app, x, y, lines, brush, moved=None):
+    def __init__(self, app, x, y, lines, moved=None, fg=None, bg=None):
         self.app = app
         self.x = x
         self.y = y
         self.lines = lines
-        self.brush = brush
+        self.fg = fg
+        self.bg = bg
         self.id = unicode(uuid.uuid4())
         self.app.notify_created(self)
         self.moved = moved
         self.visible = True
+        self.transparent = False
 
     def _get_lines(self):
         return self._lines

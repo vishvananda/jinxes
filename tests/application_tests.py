@@ -127,6 +127,11 @@ class FakeScr(object):
 class FakeActor(object):
     def __init__(self, actor_id):
         self.id = actor_id
+        self.x = 0
+        self.y = 0
+        self.hsize = 1
+        self.vsize = 1
+        self.lines = ['o']
 
 
 class ApplicationTestCase(unittest.TestCase):
@@ -158,7 +163,7 @@ class ApplicationTestCase(unittest.TestCase):
 
     def test_actors(self):
 
-        def run(app):
+        def tick(app, current):
             actor1 = FakeActor(1)
             app.notify_created(actor1)
             self.assertEqual(dict(app.actors), {1: actor1})
@@ -167,11 +172,12 @@ class ApplicationTestCase(unittest.TestCase):
             self.assertEqual(dict(app.actors), {1: actor1, 2: actor2})
             actor1 = None
             self.assertEqual(dict(app.actors), {2: actor2})
-        TestApp(self.scr, run=run)
+            raise application.Exit()
+        TestApp(self.scr, tick=tick)
 
     def test_moved_actors(self):
 
-        def run(app):
+        def tick(app, current):
             actor1 = FakeActor(1)
             app.notify_moved(actor1)
             self.assertEqual(dict(app.moved_actors), {1: actor1})
@@ -180,11 +186,12 @@ class ApplicationTestCase(unittest.TestCase):
             self.assertEqual(dict(app.moved_actors), {1: actor1, 2: actor2})
             actor1 = None
             self.assertEqual(dict(app.moved_actors), {2: actor2})
-        TestApp(self.scr, run=run)
+            raise application.Exit()
+        TestApp(self.scr, tick=tick)
 
     def test_visible_actors(self):
 
-        def run(app):
+        def tick(app, current):
             actor1 = FakeActor(1)
             actor1.visible = True
             app.notify_visible(actor1)
@@ -201,4 +208,5 @@ class ApplicationTestCase(unittest.TestCase):
             self.assertEqual(dict(app.visible_actors), {2: actor2})
             actor2 = None
             self.assertEqual(dict(app.visible_actors), {})
-        TestApp(self.scr, run=run)
+            raise application.Exit()
+        TestApp(self.scr, tick=tick)

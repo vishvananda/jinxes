@@ -32,15 +32,6 @@ def run(application_class):
     curses.wrapper(application_class)
 
 
-class Brush(int):
-    """Boxed version of an int representing a curses brush.
-
-    This allows us to use weak references to track whether a brush
-    is still being used.
-    """
-    pass
-
-
 class Exit(Exception):
     """Raise this exception to exit the main application loop."""
     pass
@@ -54,22 +45,24 @@ class Application(object):
     """
     DEFAULT_FG_COLOR = 4
     DEFAULT_BG_COLOR = 16
+    BG_CHAR = ' '
 
     def __init__(self, scr):
         self.logger = logging.getLogger('jinxes')
         curses.curs_set(0)
         self.available_brush_ids = set(xrange(1, curses.COLOR_PAIRS))
         self.allocated_brush_ids = {}
-        self.brushes = weakref.WeakValueDictionary()
+        self.brushes = {}
         self.default_brush = self.get_brush(self.DEFAULT_FG_COLOR,
                                             self.DEFAULT_BG_COLOR)
-        scr.bkgdset(ord(' '), self.default_brush)
+        scr.bkgdset(ord(self.BG_CHAR), self.default_brush)
         scr.nodelay(1)
         self.scr = scr
         self.actors = weakref.WeakValueDictionary()
         self.visible_actors = weakref.WeakValueDictionary()
         self.moved_actors = weakref.WeakValueDictionary()
         self.paused = False
+        self.brush_stacks = {}
         self.run()
 
     def notify_created(self, actor):
@@ -77,15 +70,19 @@ class Application(object):
 
     def notify_visible(self, actor):
         if actor.visible:
+            self.set_location_cache(actor)
             self.visible_actors[actor.id] = actor
         else:
             if actor.id in self.visible_actors:
+                self.clear_location_cache(actor)
                 del self.visible_actors[actor.id]
 
     def notify_moving(self, actor):
+        self.clear_location_cache(actor)
         self.clear_actor(actor)
 
     def notify_moved(self, actor):
+        self.set_location_cache(actor)
         self.moved_actors[actor.id] = actor
 
     def initialize(self, current):
@@ -96,6 +93,12 @@ class Application(object):
         self.left = 0
         self.bottom -= 1
         self.right -= 1
+        self.actors_by_location = []
+        for x in xrange(self.right):
+            ylist = []
+            for y in xrange(self.bottom):
+                ylist.append([])
+            self.actors_by_location.append(ylist)
 
     def border(self):
         self.scr.border()
@@ -107,8 +110,8 @@ class Application(object):
     def try_move(self, actor, current, x, y):
         if self.paused:
             return False
-        if (x < self.left or x + actor.hsize > self.right or
-            y < self.top or y + actor.vsize > self.bottom):
+        if (x < self.left or x + actor.hsize > self.right + 1 or
+            y < self.top or y + actor.vsize > self.bottom + 1):
             return False
         for other in self.actors.itervalues():
             collisions = actor.collisions(other, x, y)
@@ -117,51 +120,93 @@ class Application(object):
                 return self.collide(actor, other, current, collisions)
         return True
 
+    def set_location_cache(self, actor):
+        for xoffset in xrange(actor.hsize):
+            for yoffset in xrange(actor.vsize):
+                if ord(actor.lines[yoffset][xoffset]):
+                    x = actor.x + xoffset
+                    y = actor.y + yoffset
+                    ref = weakref.ref(actor)
+                    self.actors_by_location[x][y].append(ref)
+
+    def clear_location_cache(self, actor):
+        for xoffset in xrange(actor.hsize):
+            for yoffset in xrange(actor.vsize):
+                if ord(actor.lines[yoffset][xoffset]):
+                    x = actor.x + xoffset
+                    y = actor.y + yoffset
+                    ref = weakref.ref(actor)
+                    self.actors_by_location[x][y].remove(ref)
+
+    def get_char_at_loc(self, x, y, ignore=None):
+        if self.actors_by_location[x][y]:
+            for item in reversed(self.actors_by_location[x][y]):
+                actor = item()
+                if actor and actor != ignore and not actor.transparent:
+                    char = actor.lines[y - actor.y][x - actor.x]
+                    return char
+        return self.BG_CHAR
+
+    def get_colors_at_loc(self, x, y, ignore=None):
+        fg = None
+        bg = None
+        for item in reversed(self.actors_by_location[x][y]):
+            actor = item()
+            if actor and actor != ignore:
+                if actor.fg:
+                    fg = actor.fg
+                if actor.bg:
+                    bg = actor.bg
+            if fg and bg:
+                return fg, bg
+        if not fg:
+            fg = self.DEFAULT_FG_COLOR
+        if not bg:
+            bg = self.DEFAULT_BG_COLOR
+        return fg, bg
+
     def collide(self, actor, other, current, collisions):
         """Handle collision between actor and other.
 
         Return True to allow the movement."""
         return False
 
-    def draw_actor(self, actor):
+    def draw_actor(self, actor, clear=False):
         """Draw an actor at location."""
         for yoffset, line in enumerate(actor.lines):
             for xoffset, char in enumerate(line):
                 if ord(char):
-                    self.write(actor.x + xoffset,
-                               actor.y + yoffset,
-                               char.encode('utf_8'),
-                               actor.brush)
-
-    def write(self, x, y, text, brush=None):
-        """Write a text string at location with brush."""
-        if not brush:
-            brush = self.default_brush
-        self.scr.addstr(y, x, text, brush)
+                    x = actor.x + xoffset
+                    y = actor.y + yoffset
+                    if actor.transparent or clear:
+                        old_char = self.get_char_at_loc(x, y, actor)
+                        out = old_char.encode('utf-8')
+                    else:
+                        out = char.encode('utf-8')
+                    fg, bg = None, None
+                    if not actor.fg or not actor.bg:
+                        fg, bg = self.get_colors_at_loc(x, y, actor)
+                    if not clear:
+                        fg = actor.fg or fg
+                        bg = actor.bg or bg
+                    self.write(x, y, out, fg, bg)
 
     def clear_actor(self, actor):
         """Draw an actor at location."""
-        for yoffset, line in enumerate(actor.lines):
-            for xoffset, char in enumerate(line):
-                if ord(char):
-                    self.clear(actor.x + xoffset,
-                               actor.y + yoffset,
-                               char.encode('utf_8'),
-                               actor.brush)
+        self.draw_actor(actor, True)
 
-    def clear(self, x, y, text, brush=None):
-        """Clear the text at location."""
-        self.write(x, y, ' ' * len(unicode(text, 'utf_8')), brush)
+
+    def write(self, x, y, text, fg, bg):
+        """Write a text string at location with brush."""
+        brush = self.get_brush(fg, bg)
+        self.scr.addstr(y, x, text, brush)
 
     def get_brush(self, fg_color=None, bg_color=None):
         """Get a brush represented by fg and bg color.
 
         This brush can be used in further curses calls.  Note that the brush
-        is cached using a WeakRef and will be garbage collected if it is no
-        longer being used. A brush could be overwritten even if it was used
-        to draw something on the screen if the reference discarded and all
-        other brush identifiers are used up. To ensure that a brush is not
-        overwritten, simply store a reference to the brush.
+        is and will be garbage collected if we run out of brushes and it is
+        no longer needed.
         """
         if not fg_color:
             fg_color = self.DEFAULT_FG_COLOR
@@ -178,18 +223,25 @@ class Application(object):
                 except KeyError:
                     raise Exception('out of brushes')
             curses.init_pair(int_id, fg_color, bg_color)
-            brush = Brush(curses.color_pair(int_id))
+            brush_id = curses.color_pair(int_id)
             self.allocated_brush_ids[str_id] = int_id
-            self.brushes[str_id] = brush
+            self.brushes[str_id] = brush_id
         return self.brushes[str_id]
 
     def _collect_brushes(self):
         """Reclaim ids for brushes that are no longer being used."""
+        used_brushes = set(['%s:%s' % (self.DEFAULT_FG_COLOR,
+                                       self.DEFAULT_BG_COLOR)])
+        for x in xrange(self.right):
+            for y in xrange(self.bottom):
+                fg, bg = self.get_colors_at_loc(x, y)
+                used_brushes.add('%s:%s' % (fg, bg))
         for str_id in self.allocated_brush_ids.keys():
-            if str_id not in self.brushes:
+            if str_id not in used_brushes:
                 int_id = self.allocated_brush_ids[str_id]
                 self.available_brush_ids.append(int_id)
                 del self.allocated_brush_ids[str_id]
+                del self.brushes[str_id]
 
     def run(self):
         """Endless processing loop."""

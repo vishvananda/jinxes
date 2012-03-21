@@ -51,10 +51,10 @@ class Monster(actor.Actor):
 
 class Game(application.Application):
     WALL_COLOR = 5
-    CRSR_COLOR = 4
+    PLAYER_COLOR = 4
     MONSTER_COLOR = 1
     GOAL_COLOR = 3
-    CRSR_CHAR = u"\u263A"
+    PLR_CHAR = u"\u263A"
     MONSTER_CHAR = u"\u2603"
     GOAL_CHAR = u"\u2624"
     MONSTER_SLOWEST = 0.10
@@ -67,11 +67,6 @@ class Game(application.Application):
     def initialize(self, current):
         super(Game, self).initialize(current)
         self.border()
-        self.crsr_brush = self.get_brush(self.CRSR_COLOR,
-                                         self.DEFAULT_BG_COLOR)
-        self.wall_brush = self.get_brush(self.WALL_COLOR)
-        self.goal_brush = self.get_brush(self.GOAL_COLOR)
-        self.monster_brush = self.get_brush(self.MONSTER_COLOR)
         self.setup(current)
 
     def setup(self, current):
@@ -81,14 +76,14 @@ class Game(application.Application):
             y = random.randint(self.top + 3, self.bottom)
             x = random.randint(self.left + 3, self.right)
             monster = Monster(self, x, y, self.MONSTER_CHAR,
-                              self.monster_brush, current)
+                              current, fg=self.MONSTER_COLOR)
             monster.frequency = random.uniform(self.MONSTER_SLOWEST,
                                                self.MONSTER_FASTEST)
             self.monsters[monster.id] = monster
-        self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
-                          self.crsr_brush, current)
+        self.plr = actor.Actor(self, self.left, self.top, self.PLR_CHAR,
+                               current, fg=self.PLAYER_COLOR)
         self.goal = actor.Actor(self, self.right, self.bottom, self.GOAL_CHAR,
-                          self.goal_brush, current)
+                                current, fg=self.GOAL_COLOR)
         self.paused = False
 
 
@@ -108,16 +103,16 @@ class Game(application.Application):
                 monster.move(current, x, y)
 
     def handle_k(self, current):
-        self.crsr.move(current, self.crsr.x, self.crsr.y - 1)
+        self.plr.move(current, self.plr.x, self.plr.y - 1)
 
     def handle_j(self, current):
-        self.crsr.move(current, self.crsr.x, self.crsr.y + 1)
+        self.plr.move(current, self.plr.x, self.plr.y + 1)
 
     def handle_h(self, current):
-        self.crsr.move(current, self.crsr.x - 1, self.crsr.y)
+        self.plr.move(current, self.plr.x - 1, self.plr.y)
 
     def handle_l(self, current):
-        self.crsr.move(current, self.crsr.x + 1, self.crsr.y)
+        self.plr.move(current, self.plr.x + 1, self.plr.y)
 
     def handle_q(self, current):
         raise application.Exit()
@@ -130,7 +125,7 @@ class Game(application.Application):
         self.initialize(current)
 
     def is_player(self, actor):
-        return actor == self.crsr
+        return actor == self.plr
 
     def is_goal(self, actor):
         return actor == self.goal
@@ -153,11 +148,13 @@ class Game(application.Application):
         return True
 
     def win(self):
-        self.write(3, 3, self.WIN_MSG, self.crsr_brush)
+        self.draw_actor(actor.Actor(self, 3, 3, self.WIN_MSG,
+                                    fg=self.GOAL_COLOR))
         self.paused = True
 
     def lose(self):
-        self.write(3, 3, self.LOSE_MSG, self.monster_brush)
+        self.draw_actor(actor.Actor(self, 3, 3, self.LOSE_MSG,
+                                    fg=self.MONSTER_COLOR))
         self.paused = True
 
 
