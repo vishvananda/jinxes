@@ -81,7 +81,6 @@ class ViNav(application.Application):
 
     def initialize(self, current):
         super(ViNav, self).initialize(current)
-        self.border()
         self.setup(current)
 
     def setup(self, current):
