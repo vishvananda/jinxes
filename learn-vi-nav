@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright (c) 2012 Vishvananda Ishaya
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+"""
+Simple example game for jinxes library
+"""
+
+
+import logging
+import random
+
+from jinxes import actor
+from jinxes import application
+
+
+class Word(actor.Actor):
+    def __init__(self, app, x, y, text, current=None, life=20):
+        super(Word, self).__init__(app, x, y, text, current)
+        self.colors = [
+                 16, 52, 88, 124, 160,
+                 196, 202, 208, 214, 220,
+                 226, 190, 154, 118, 82,
+                 46, 83, 120, 157, 194,
+                 231,
+        ]
+        self.set_life(life, current)
+        # NOTE(vish): The above list can be generated with:
+        # from jinxes import utils
+        # self.colors = []
+        # for i in xrange(21):
+        #     if i > 15:
+        #         red = i - 15
+        #         green = 5
+        #         blue = i - 15
+        #     elif i > 10:
+        #         red = 15 - i
+        #         green = 5
+        #         blue = 0
+        #     elif i > 5:
+        #         red = 5
+        #         green = i - 5
+        #         blue = 0
+        #     else:
+        #         red = i
+        #         green = 0
+        #         blue = 0
+        #     color = utils.rgb_to_color(red, green, blue)
+        #     self.colors.append(color)
+
+    def set_life(self, life, current):
+        self.life = life
+        self.fg = self.colors[life]
+        self.updated = current
+
+
+class ViNav(application.Application):
+    WALL_COLOR = 5
+    CRSR_COLOR = 4
+    WORD_COLOR = 1
+    CRSR_CHAR = u"\u263A"
+    GOAL_CHAR = u"\u2624"
+    UPDATE_TICKS = 5
+    SPAWN_TICKS = 5
+    SPAWN_NUMBER = 5
+    FREQUENCY = 0.02
+    NUM_WORDS = 80
+
+    def initialize(self, current):
+        super(ViNav, self).initialize(current)
+        self.border()
+        self.setup(current)
+
+    def setup(self, current):
+        self.time_based = False
+        self.ticks = 0
+        random.seed()
+        self.words = {}
+        self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
+                                current, bg=self.CRSR_COLOR)
+        self.crsr.transparent = True
+        self.updated = current
+        self.paused = False
+
+    def spawn_word(self, current):
+        text = random.choice(['words', 'that', 'you', 'would', 'like', 'to', 'use'])
+        y = random.randint(self.top + 3, self.bottom)
+        x = random.randint(self.left + 3, self.right - len(text))
+        word = Word(self, x, y, text, current, life=random.randint(10, 20))
+        word.ticks = self.ticks % self.UPDATE_TICKS
+        self.words[word.id] = word
+        self.spawned = current
+
+    def tick(self, current):
+        """Do frame actions"""
+
+        if self.time_based and current - self.updated > self.FREQUENCY:
+            self.game_tick(current)
+        if self.updated == current:
+            for key in list(self.words.iterkeys()):
+                word = self.words[key]
+                if (self.ticks + word.ticks) % self.UPDATE_TICKS == 0:
+                    self.update_word(word, current)
+            if self.ticks % self.SPAWN_TICKS == 0:
+                for i in range(self.SPAWN_NUMBER):
+                    self.spawn_word(current)
+
+    def update_word(self, word, current):
+        if word.life == 0:
+            del self.words[word.id]
+            return
+        word.set_life(word.life - 1, current)
+
+    def game_tick(self, current):
+        self.ticks += 1
+        self.updated = current
+
+    def process_character(self, current, character):
+        if not self.time_based:
+            self.game_tick(current)
+        super(ViNav, self).process_character(current, character)
+
+    def handle_t(self, current):
+        self.time_based = not self.time_based
+
+    def handle_k(self, current):
+        self.crsr.move(current, self.crsr.x, self.crsr.y - 1)
+
+    def handle_j(self, current):
+        self.crsr.move(current, self.crsr.x, self.crsr.y + 1)
+
+    def handle_h(self, current):
+        self.crsr.move(current, self.crsr.x - 1, self.crsr.y)
+
+    def handle_l(self, current):
+        self.crsr.move(current, self.crsr.x + 1, self.crsr.y)
+
+    def handle_q(self, current):
+        raise application.Exit()
+
+    def handle_r(self, current):
+        if self.paused:
+            self.initialize(current)
+
+    def handle_resize(self, current):
+        self.initialize(current)
+
+    def is_player(self, actor):
+        return actor == self.crsr
+
+    def is_goal(self, actor):
+        return actor == self.goal
+
+    def is_word(self, actor):
+        return actor.id in self.words
+
+    def collide(self, actor, other, current, collisions):
+        return True
+
+
+if __name__ == "__main__":
+    logger = logging.getLogger('jinxes')
+    hdlr = logging.FileHandler('jinxes.log')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+    logger.setLevel(logging.DEBUG)
+    application.run(ViNav)
+    with open('jinxes.log') as log:
+        data = log.read()
+        if data:
+            print data
