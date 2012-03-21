@@ -90,7 +90,7 @@ class Game(application.Application):
     def tick(self, current):
         """Do frame actions"""
         for monster in self.monsters.itervalues():
-            if current - monster.moved > monster.frequency:
+            if current - monster.updated > monster.frequency:
                 direction = random.randint(1, 4)
                 if direction == 1:
                     x, y = monster.x, monster.y - 1

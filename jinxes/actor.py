@@ -23,7 +23,7 @@ import uuid
 
 class Actor(object):
 
-    def __init__(self, app, x, y, lines, moved=None, fg=None, bg=None):
+    def __init__(self, app, x, y, lines, updated=None, fg=None, bg=None):
         self.app = app
         self.x = x
         self.y = y
@@ -32,7 +32,7 @@ class Actor(object):
         self.bg = bg
         self.id = unicode(uuid.uuid4())
         self.app.notify_created(self)
-        self.moved = moved
+        self.updated = updated
         self.visible = True
         self.transparent = False
 
@@ -54,25 +54,27 @@ class Actor(object):
             self.app.notify_moving(self)
             self.x = x
             self.y = y
-            self.moved = current
+            self.updated = current
+            self.app.notify_moved(self)
 
     def _get_visible(self):
         return self._visible
 
     def _set_visible(self, value):
-        self._visible = value
-        self.app.notify_visible(self)
+        if value != getattr(self, '_visible', None):
+            self._visible = value
+            self.app.notify_visible(self)
 
     visible = property(_get_visible, _set_visible)
 
-    def _get_moved(self):
-        return self._moved
+    def _get_updated(self):
+        return self._updated
 
-    def _set_moved(self, value):
-        self._moved = value
-        self.app.notify_moved(self)
+    def _set_updated(self, value):
+        self._updated = value
+        self.app.notify_updated(self)
 
-    moved = property(_get_moved, _set_moved)
+    updated = property(_get_updated, _set_updated)
 
     def collisions(self, other, x=None, y=None):
         """Returns a set of coordinates to check for collisions.

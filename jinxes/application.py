@@ -60,7 +60,7 @@ class Application(object):
         self.scr = scr
         self.actors = weakref.WeakValueDictionary()
         self.visible_actors = weakref.WeakValueDictionary()
-        self.moved_actors = weakref.WeakValueDictionary()
+        self.updated_actors = weakref.WeakValueDictionary()
         self.paused = False
         self.brush_stacks = {}
         self.run()
@@ -73,8 +73,8 @@ class Application(object):
             self.set_location_cache(actor)
             self.visible_actors[actor.id] = actor
         else:
+            self.clear_location_cache(actor)
             if actor.id in self.visible_actors:
-                self.clear_location_cache(actor)
                 del self.visible_actors[actor.id]
 
     def notify_moving(self, actor):
@@ -83,7 +83,10 @@ class Application(object):
 
     def notify_moved(self, actor):
         self.set_location_cache(actor)
-        self.moved_actors[actor.id] = actor
+
+    def notify_updated(self, actor):
+        self.set_location_cache(actor)
+        self.updated_actors[actor.id] = actor
 
     def initialize(self, current):
         self.dirty = True
@@ -127,7 +130,8 @@ class Application(object):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
                     ref = weakref.ref(actor)
-                    self.actors_by_location[x][y].append(ref)
+                    if ref not in self.actors_by_location[x][y]:
+                        self.actors_by_location[x][y].append(ref)
 
     def clear_location_cache(self, actor):
         for xoffset in xrange(actor.hsize):
@@ -136,15 +140,15 @@ class Application(object):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
                     ref = weakref.ref(actor)
-                    self.actors_by_location[x][y].remove(ref)
+                    if ref in self.actors_by_location[x][y]:
+                        self.actors_by_location[x][y].remove(ref)
 
     def get_char_at_loc(self, x, y, ignore=None):
         if self.actors_by_location[x][y]:
             for item in reversed(self.actors_by_location[x][y]):
                 actor = item()
                 if actor and actor != ignore and not actor.transparent:
-                    char = actor.lines[y - actor.y][x - actor.x]
-                    return char
+                    return actor.lines[y - actor.y][x - actor.x]
         return self.BG_CHAR
 
     def get_colors_at_loc(self, x, y, ignore=None):
@@ -285,7 +289,7 @@ class Application(object):
             self.scr.refresh()
             self.dirty = False
 
-        for actor in self.moved_actors.itervalues():
+        for actor in self.updated_actors.itervalues():
             if actor.visible:
                 self.draw_actor(actor)
-        self.moved_actors = weakref.WeakValueDictionary()
+        self.updated_actors = weakref.WeakValueDictionary()

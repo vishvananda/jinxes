@@ -175,17 +175,17 @@ class ApplicationTestCase(unittest.TestCase):
             raise application.Exit()
         TestApp(self.scr, tick=tick)
 
-    def test_moved_actors(self):
+    def test_updated_actors(self):
 
         def tick(app, current):
             actor1 = FakeActor(1)
-            app.notify_moved(actor1)
-            self.assertEqual(dict(app.moved_actors), {1: actor1})
+            app.notify_updated(actor1)
+            self.assertEqual(dict(app.updated_actors), {1: actor1})
             actor2 = FakeActor(2)
-            app.notify_moved(actor2)
-            self.assertEqual(dict(app.moved_actors), {1: actor1, 2: actor2})
+            app.notify_updated(actor2)
+            self.assertEqual(dict(app.updated_actors), {1: actor1, 2: actor2})
             actor1 = None
-            self.assertEqual(dict(app.moved_actors), {2: actor2})
+            self.assertEqual(dict(app.updated_actors), {2: actor2})
             raise application.Exit()
         TestApp(self.scr, tick=tick)
 
