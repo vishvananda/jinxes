@@ -175,10 +175,15 @@ class Application(object):
         Return True to allow the movement."""
         return False
 
-    def draw_actor(self, actor, clear=False):
+    def draw_actor(self, actor, xstart=0, ystart=0,
+                   width=None, height=None, clear=False):
         """Draw an actor at location."""
-        for xoffset in xrange(actor.hsize):
-            for yoffset in xrange(actor.vsize):
+        if width is None:
+            width = actor.hsize - xstart
+        if height is None:
+            height = actor.vsize - ystart
+        for xoffset in xrange(xstart, xstart + width):
+            for yoffset in xrange(ystart, ystart + height):
                 char = actor.get_ch(xoffset, yoffset)
                 if ord(char):
                     x = actor.x + xoffset
@@ -198,13 +203,17 @@ class Application(object):
 
     def clear_actor(self, actor):
         """Draw an actor at location."""
-        self.draw_actor(actor, True)
+        self.draw_actor(actor, clear=True)
 
 
     def write(self, x, y, text, fg, bg):
         """Write a text string at location with brush."""
         brush = self.get_brush(fg, bg)
-        self.scr.addstr(y, x, text, brush)
+        try:
+            self.scr.addstr(y, x, text, brush)
+        except curses.error:
+            if x == self.right and y == self.bottom:
+                pass
 
     def get_brush(self, fg_color=None, bg_color=None):
         """Get a brush represented by fg and bg color.

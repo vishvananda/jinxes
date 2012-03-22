@@ -50,7 +50,10 @@ class Actor(object):
     display = property(_get_display, _set_display)
 
     def get_ch(self, x, y):
-        return self.display[y][x]
+        try:
+            return self.display[y][x]
+        except IndexError:
+            return '\0'
 
     def move(self, current, x, y):
         if self.app.try_move(self, current, x, y):

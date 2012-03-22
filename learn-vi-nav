@@ -70,27 +70,73 @@ class Word(actor.Actor):
 class ViNav(application.Application):
     WALL_COLOR = 5
     CRSR_COLOR = 4
-    WORD_COLOR = 1
+    TEXT_COLOR = 15
     CRSR_CHAR = u"\u263A"
     GOAL_CHAR = u"\u2624"
     UPDATE_TICKS = 5
     SPAWN_TICKS = 5
     SPAWN_NUMBER = 5
     NUM_WORDS = 80
+    NONWORD = "\n"
 
     def __init__(self, scr):
         self.time_based = True
         self.frequency = 0.02
+        self.init_markov()
         super(ViNav, self).__init__(scr)
 
     def initialize(self, current):
         super(ViNav, self).initialize(current)
         self.setup(current)
 
+    def init_markov(self):
+        with open('words.txt') as f:
+            data = f.read().decode('utf-8', 'ignore')
+        self.word_list = data.split()
+
+        nonword = '\n'
+        w1 = nonword
+        w2 = nonword
+
+        self.markov_table = {}
+
+        for word in self.word_list:
+            self.markov_table.setdefault((w1, w2), []).append(word)
+            w1, w2 = w2, word
+
+        self.markov_table.setdefault((w1, w2), []).append(nonword)
+
+    def get_markov_words(self, numwords):
+        nonword = '\n'
+        w1, w2 = random.choice(self.markov_table.keys())
+        words = []
+        for i in xrange(numwords):
+            newword = random.choice(self.markov_table[(w1, w2)])
+            if newword == nonword:
+                break
+            words.append(newword)
+            w1, w2 = w2, newword
+        return words
+
     def setup(self, current):
         self.ticks = 0
         random.seed()
         self.words = {}
+        words = self.get_markov_words(2000)
+        self.text = []
+        display = []
+        line = []
+        for word in words:
+            line.append(word)
+            if len(' '.join(line)) >= self.right:
+                text = ' '.join(line[:-1])
+                display.append(text + (self.right - len(text)) * ' ')
+                line = [word]
+            if len(display) == self.bottom + 1:
+                break
+        self.text = ' \n'.join([line.rstrip() for line in display])
+        self.bg = actor.Actor(self, self.left, self.top, display,
+                                current, fg=self.TEXT_COLOR)
         self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
                                 current, bg=self.CRSR_COLOR)
         self.crsr.transparent = True
@@ -98,12 +144,15 @@ class ViNav(application.Application):
         self.paused = False
 
     def spawn_word(self, current):
-        text = random.choice(['words', 'that', 'you', 'would', 'like', 'to', 'use'])
-        y = random.randint(self.top + 3, self.bottom)
-        x = random.randint(self.left + 3, self.right - len(text))
+        text = random.choice(self.word_list) + ' '
+        y = random.randint(self.top, self.bottom)
+        x = random.randint(self.left, self.right - len(text))
         word = Word(self, x, y, text, current, life=random.randint(10, 20))
         word.ticks = self.ticks % self.UPDATE_TICKS
         self.words[word.id] = word
+        line = self.bg.display[word.y]
+        self.bg.display[y] = line[:x] + text + line[x + len(text):]
+        self.text = ' \n'.join([line.rstrip() for line in self.bg.display])
         self.spawned = current
 
     def tick(self, current):
@@ -122,6 +171,7 @@ class ViNav(application.Application):
 
     def update_word(self, word, current):
         if word.life == 0:
+            self.clear_actor(word)
             del self.words[word.id]
             return
         word.set_life(word.life - 1, current)
