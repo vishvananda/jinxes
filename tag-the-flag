@@ -38,7 +38,7 @@ class Monster(actor.Actor):
                 y = self.y
             lines = []
             lines.append('\0' + ' ' * self.hsize + '\0')
-            for line in self.lines:
+            for line in self.display:
                 lines.append(' ' + line + ' ')
             lines.append('\0' + ' ' * self.hsize + '\0')
             coords = []

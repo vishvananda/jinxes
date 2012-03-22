@@ -126,7 +126,7 @@ class Application(object):
     def set_location_cache(self, actor):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
-                if ord(actor.lines[yoffset][xoffset]):
+                if ord(actor.get_ch(xoffset, yoffset)):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
                     ref = weakref.ref(actor)
@@ -136,7 +136,7 @@ class Application(object):
     def clear_location_cache(self, actor):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
-                if ord(actor.lines[yoffset][xoffset]):
+                if ord(actor.get_ch(xoffset, yoffset)):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
                     ref = weakref.ref(actor)
@@ -148,7 +148,7 @@ class Application(object):
             for item in reversed(self.actors_by_location[x][y]):
                 actor = item()
                 if actor and actor != ignore and not actor.transparent:
-                    return actor.lines[y - actor.y][x - actor.x]
+                    return actor.get_ch(x - actor.x, y - actor.y)
         return self.BG_CHAR
 
     def get_colors_at_loc(self, x, y, ignore=None):
@@ -177,8 +177,9 @@ class Application(object):
 
     def draw_actor(self, actor, clear=False):
         """Draw an actor at location."""
-        for yoffset, line in enumerate(actor.lines):
-            for xoffset, char in enumerate(line):
+        for xoffset in xrange(actor.hsize):
+            for yoffset in xrange(actor.vsize):
+                char = actor.get_ch(xoffset, yoffset)
                 if ord(char):
                     x = actor.x + xoffset
                     y = actor.y + yoffset

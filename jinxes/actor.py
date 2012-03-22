@@ -23,11 +23,11 @@ import uuid
 
 class Actor(object):
 
-    def __init__(self, app, x, y, lines, updated=None, fg=None, bg=None):
+    def __init__(self, app, x, y, display, updated=None, fg=None, bg=None):
         self.app = app
         self.x = x
         self.y = y
-        self.lines = lines
+        self.display = display
         self.fg = fg
         self.bg = bg
         self.id = unicode(uuid.uuid4())
@@ -36,18 +36,21 @@ class Actor(object):
         self.visible = True
         self.transparent = False
 
-    def _get_lines(self):
-        return self._lines
+    def _get_display(self):
+        return self._display
 
-    def _set_lines(self, value):
+    def _set_display(self, value):
         if isinstance(value, basestring):
-            self._lines = value.split('\n')
+            self._display = value.split('\n')
         else:
-            self._lines = value
-        self.hsize = max(len(line) for line in self.lines)
-        self.vsize = len(self.lines)
+            self._display = value
+        self.hsize = max(len(line) for line in self._display)
+        self.vsize = len(self._display)
 
-    lines = property(_get_lines, _set_lines)
+    display = property(_get_display, _set_display)
+
+    def get_ch(self, x, y):
+        return self.display[y][x]
 
     def move(self, current, x, y):
         if self.app.try_move(self, current, x, y):
@@ -91,6 +94,6 @@ class Actor(object):
         coords = []
         for xoffset in xrange(self.hsize):
             for yoffset in xrange(self.vsize):
-                if ord(self.lines[yoffset][xoffset]):
+                if ord(self.display[yoffset][xoffset]):
                     coords.append((x + xoffset, y + yoffset))
         return set(coords)

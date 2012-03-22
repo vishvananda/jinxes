@@ -131,7 +131,9 @@ class FakeActor(object):
         self.y = 0
         self.hsize = 1
         self.vsize = 1
-        self.lines = ['o']
+
+    def get_ch(self, x, y):
+        return 'o'
 
 
 class ApplicationTestCase(unittest.TestCase):
