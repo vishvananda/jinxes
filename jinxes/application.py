@@ -94,8 +94,6 @@ class Application(object):
         self.set_location_cache(actor)
 
     def initialize(self, current):
-        self.dirty = True
-        self.scr.clear()
         self.bottom, self.right = self.scr.getmaxyx()
         self.top = 0
         self.left = 0
@@ -124,7 +122,7 @@ class Application(object):
                     actor.xvel = -actor.xvel
                 else:
                     floatx = self.left
-            elif floatx + actor.hsize > self.right:
+            elif floatx + actor.hsize > self.right + 2:
                 if actor.xvel:
                     floatx = floatx - actor.hsize - 0.5 - (floatx - self.right)
                     actor.xvel = -actor.xvel
@@ -136,12 +134,16 @@ class Application(object):
                     actor.yvel = -actor.yvel
                 else:
                     floaty = self.top
-            elif floaty + actor.vsize > self.bottom:
+            elif floaty + actor.vsize > self.bottom + 2:
                 if actor.yvel:
                     floaty = floaty - actor.vsize - 0.5 - (floaty - self.bottom)
                     actor.yvel = -actor.yvel
                 else:
                     floaty = self.bottom + 1 - actor.vsize
+        if floatx < self.left:
+            floatx = self.left
+        if floaty < self.top:
+            floaty = self.top
         x = int(floatx)
         y = int(floaty)
         if actor.collides:

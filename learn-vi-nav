@@ -72,16 +72,13 @@ class Word(actor.Actor):
 
 
 class ViNav(application.Application):
-    WALL_COLOR = 5
     CRSR_COLOR = 4
     TEXT_COLOR = 15
     CRSR_CHAR = [u"\u263A"]
-    GOAL_CHAR = [u"\u2624"]
     UPDATE_TICKS = 5
     SPAWN_TICKS = 5
     SPAWN_NUMBER = 5
     NUM_WORDS = 80
-    NONWORD = "\n"
 
     def __init__(self, scr):
         self.time_based = True
@@ -222,15 +219,6 @@ class ViNav(application.Application):
 
     def handle_resize(self, current):
         self.initialize(current)
-
-    def is_player(self, actor):
-        return actor == self.crsr
-
-    def is_goal(self, actor):
-        return actor == self.goal
-
-    def is_word(self, actor):
-        return actor.id in self.words
 
     def collide(self, actor, other, current, collisions, floatx, floaty):
         return floatx, floaty

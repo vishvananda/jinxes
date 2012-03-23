@@ -49,14 +49,13 @@ class Wider(actor.Actor):
 
 
 class Game(application.Application):
-    WALL_COLOR = 5
     PLAYER_COLOR = 4
     GOAL_COLOR = 3
     PLR_CHAR = [u"\u263A"]
     MONSTER_CHAR = [u"\u2603"]
     GOAL_CHAR = [u"\u2624"]
-    MONSTER_SLOWEST = 0.10
-    MONSTER_FASTEST = 0.02
+    MONSTER_SLOWEST = -20.0
+    MONSTER_FASTEST = 20.0
     NUM_MONSTERS = 60
     WIN_MSG = ["YOU WIN!!! (r to restart)"]
     LOSE_MSG = ["YOU LOSE!!! (r to restart)"]
@@ -80,6 +79,10 @@ class Game(application.Application):
             color = utils.rgb_to_color(5 - int(speed * 5), 0, 0)
             monster = Wider(self, x, y, self.MONSTER_CHAR,
                               current, fg=color)
+            monster.xvel = random.uniform(self.MONSTER_SLOWEST,
+                                          self.MONSTER_FASTEST)
+            monster.yvel = random.uniform(self.MONSTER_SLOWEST,
+                                          self.MONSTER_FASTEST)
             monster.frequency = (self.MONSTER_FASTEST + speed *
                                  (self.MONSTER_SLOWEST - self.MONSTER_FASTEST))
             self.monsters[monster.id] = monster
@@ -88,22 +91,6 @@ class Game(application.Application):
         self.goal = actor.Actor(self, self.right, self.bottom, self.GOAL_CHAR,
                                 current, fg=self.GOAL_COLOR)
         self.paused = False
-
-
-    def tick(self, current, delta):
-        """Do frame actions"""
-        for monster in self.monsters.itervalues():
-            if current - monster.updated > monster.frequency:
-                direction = random.randint(1, 4)
-                if direction == 1:
-                    x, y = monster.x, monster.y - 1
-                elif direction == 2:
-                    x, y = monster.x, monster.y + 1
-                elif direction == 3:
-                    x, y = monster.x - 1, monster.y
-                elif direction == 4:
-                    x, y = monster.x + 1, monster.y
-                monster.move(current, x, y)
 
     def handle_k(self, current):
         if not self.paused:
@@ -142,24 +129,31 @@ class Game(application.Application):
 
     def collide(self, actor, other, current, collisions, floatx, floaty):
         if self.is_monster(actor) and self.is_monster(other):
-            return actor.x != other.x and actor.y != other.y
+            if int(floatx) == other.x and int(floaty) == other.y:
+                actor.xvel = -actor.xvel
+                other.xvel = -other.xvel
+                actor.yvel = -actor.yvel
+                other.yvel = -other.yvel
+                return False
+            else:
+                return True
         if self.is_monster(actor) and self.is_goal(other):
             return False
         if self.is_player(actor) and self.is_goal(other):
-            if actor.x == other.x and actor.y == other.y:
-                self.win()
+            if int(floatx) == other.x and int(floaty) == other.y:
+                self.win_game()
             return True
         if (self.is_player(actor) and self.is_monster(other) or
            self.is_monster(actor) and self.is_player(other)):
-            self.lose()
+            self.lose_game()
             return True
         return True
 
-    def win(self):
+    def win_game(self):
         self.msg = actor.Actor(self, 3, 3, self.WIN_MSG, fg=self.GOAL_COLOR)
         self.paused = True
 
-    def lose(self):
+    def lose_game(self):
         self.msg = actor.Actor(self, 3, 3, self.LOSE_MSG, fg=self.LOSE_COLOR)
         self.paused = True
 
