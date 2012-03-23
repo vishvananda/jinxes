@@ -39,7 +39,7 @@ class Monster(actor.Actor):
             lines = []
             lines.append('\0' + ' ' * self.hsize + '\0')
             for line in self.display:
-                lines.append(' ' + line + ' ')
+                lines.append([' '] + line + [' '])
             lines.append('\0' + ' ' * self.hsize + '\0')
             coords = []
             for xoffset in xrange(self.hsize + 2):
@@ -54,14 +54,14 @@ class Game(application.Application):
     WALL_COLOR = 5
     PLAYER_COLOR = 4
     GOAL_COLOR = 3
-    PLR_CHAR = u"\u263A"
-    MONSTER_CHAR = u"\u2603"
-    GOAL_CHAR = u"\u2624"
+    PLR_CHAR = [u"\u263A"]
+    MONSTER_CHAR = [u"\u2603"]
+    GOAL_CHAR = [u"\u2624"]
     MONSTER_SLOWEST = 0.10
     MONSTER_FASTEST = 0.02
     NUM_MONSTERS = 60
-    WIN_MSG = "YOU WIN!!! (r to restart)"
-    LOSE_MSG = "YOU LOSE!!! (r to restart)"
+    WIN_MSG = ["YOU WIN!!! (r to restart)"]
+    LOSE_MSG = ["YOU LOSE!!! (r to restart)"]
     LOSE_COLOR = 1
 
 
@@ -90,7 +90,7 @@ class Game(application.Application):
         self.paused = False
 
 
-    def tick(self, current):
+    def tick(self, current, delta):
         """Do frame actions"""
         for monster in self.monsters.itervalues():
             if current - monster.updated > monster.frequency:

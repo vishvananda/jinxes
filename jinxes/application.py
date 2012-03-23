@@ -23,7 +23,6 @@ import curses
 import locale
 import logging
 import time
-import weakref
 
 
 def run(application_class):
@@ -177,31 +176,7 @@ class Application(object):
                         if actor in self.actors_by_location[(x, y)]:
                             self.actors_by_location[(x, y)].remove(actor)
 
-    def get_char_at_loc(self, x, y, ignore=None):
-        for actor in reversed(self.actors_by_location[(x, y)]):
-            if actor and actor != ignore and not actor.transparent:
-                char = actor.get_ch(x - actor.x, y - actor.y)[0]
-                if ord(char):
-                    return char, actor
-        return self.BG_CHAR, None
-
-    def get_colors_at_loc(self, x, y, ignore=None):
-        fg = None
-        bg = None
-        for actor in reversed(self.actors_by_location[(x, y)]):
-            if actor and actor != ignore:
-                _ch, fg, bg, inverted = actor.get_ch(x - actor.x, y - actor.y)
-                if inverted:
-                    fg, bg = bg, fg
-            if fg and bg:
-                return fg, bg
-        if not fg:
-            fg = self.DEFAULT_FG_COLOR
-        if not bg:
-            bg = self.DEFAULT_BG_COLOR
-        return fg, bg
-
-    def draw_location(self, x, y):
+    def get_location(self, x, y):
         ch, fg, bg = None, None, None
         for actor in reversed(self.actors_by_location[(x, y)]):
             if actor:
@@ -220,53 +195,13 @@ class Application(object):
         ch = ch or self.BG_CHAR
         fg = fg or self.DEFAULT_FG_COLOR
         bg = bg or self.DEFAULT_BG_COLOR
-        if fg == self.DEFAULT_BG_COLOR:
-            raise Exception()
-
-        self.write(x, y, ch, fg, bg)
+        return ch, fg, bg
 
     def collide(self, actor, other, current, collisions, floatx, floaty):
         """Handle collision between actor and other.
 
         Return floatx, floaty to allow the movement."""
         return floatx, floaty
-
-    def draw_actor(self, actor, xstart=0, ystart=0,
-                   width=None, height=None, clear=False):
-        """Draw an actor at location."""
-        if width is None:
-            width = actor.hsize - xstart
-        if height is None:
-            height = actor.vsize - ystart
-        for xoffset in xrange(xstart, xstart + width):
-            for yoffset in xrange(ystart, ystart + height):
-                char, fg, bg, inverted = actor.get_ch(xoffset, yoffset)
-                if clear:
-                    fg, bg = None, None
-                x = actor.x + xoffset
-                y = actor.y + yoffset
-                if (x >= 0 and x <= self.right
-                    and y >= 0 and y <= self.bottom
-                    and ord(char)):
-                    old_char, other = self.get_char_at_loc(x, y, actor)
-                    if other and other > actor:
-                        continue
-                    elif actor.transparent or clear:
-                        out = old_char.encode('utf-8')
-                    else:
-                        out = char.encode('utf-8')
-                    if not fg or not bg:
-                        oldfg, oldbg = self.get_colors_at_loc(x, y, actor)
-                    fg = fg or oldfg
-                    bg = bg or oldbg
-                    if inverted and not clear:
-                        fg, bg = bg, fg
-                    self.write(x, y, out, fg, bg)
-
-    def clear_actor(self, actor):
-        """Draw an actor at location."""
-        self.draw_actor(actor, clear=True)
-
 
     def write(self, x, y, text, fg, bg):
         """Write a text string at location with brush."""
@@ -310,7 +245,7 @@ class Application(object):
                                        self.DEFAULT_BG_COLOR)])
         for x in xrange(self.right):
             for y in xrange(self.bottom):
-                fg, bg = self.get_colors_at_loc(x, y)
+                ch, fg, bg = self.get_location(x, y)
                 used_brushes.add('%s:%s' % (fg, bg))
         for str_id in self.allocated_brush_ids.keys():
             if str_id not in used_brushes:
@@ -366,5 +301,6 @@ class Application(object):
             self.dirty = False
 
         for (x, y) in self.dirty_by_location.iterkeys():
-            self.draw_location(x, y)
+            ch, fg, bg = self.get_location(x, y)
+            self.write(x, y, ch, fg, bg)
         self.dirty_by_location = {}

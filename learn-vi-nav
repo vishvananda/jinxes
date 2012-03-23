@@ -29,7 +29,6 @@ from jinxes import application
 
 class Word(actor.Actor):
     def __init__(self, app, x, y, text, current=None, life=20):
-        super(Word, self).__init__(app, x, y, text, current)
         self.colors = [
                  16, 52, 88, 124, 160,
                  196, 202, 208, 214, 220,
@@ -37,7 +36,8 @@ class Word(actor.Actor):
                  46, 83, 120, 157, 194,
                  231,
         ]
-        self.set_life(life, current)
+        self.life = life
+        super(Word, self).__init__(app, x, y, text, current)
         # NOTE(vish): The above list can be generated with:
         # from jinxes import utils
         # self.colors = []
@@ -63,16 +63,20 @@ class Word(actor.Actor):
 
     def set_life(self, life, current):
         self.life = life
-        self.fg = self.colors[life]
         self.updated = current
+
+    def get_ch(self, x, y):
+        ch, fg, bg, inverted = super(Word, self).get_ch(x, y)
+        color = self.colors[self.life]
+        return ch, color, bg, inverted
 
 
 class ViNav(application.Application):
     WALL_COLOR = 5
     CRSR_COLOR = 4
     TEXT_COLOR = 15
-    CRSR_CHAR = u"\u263A"
-    GOAL_CHAR = u"\u2624"
+    CRSR_CHAR = [u"\u263A"]
+    GOAL_CHAR = [u"\u2624"]
     UPDATE_TICKS = 5
     SPAWN_TICKS = 5
     SPAWN_NUMBER = 5
@@ -124,18 +128,18 @@ class ViNav(application.Application):
         self.words = {}
         words = self.get_markov_words(2000)
         self.text = []
-        display = []
+        self.display = []
         line = []
         for word in words:
             line.append(word)
             if len(' '.join(line)) >= self.right:
                 text = ' '.join(line[:-1])
-                display.append(text + (self.right - len(text)) * ' ')
+                self.display.append(text + (self.right - len(text)) * ' ')
                 line = [word]
-            if len(display) == self.bottom + 1:
+            if len(self.display) == self.bottom + 1:
                 break
-        self.text = ' \n'.join([line.rstrip() for line in display])
-        self.bg = actor.Actor(self, self.left, self.top, display,
+        self.text = ' \n'.join([line.rstrip() for line in self.display])
+        self.bg = actor.Actor(self, self.left, self.top, [self.display],
                                 current, fg=self.TEXT_COLOR)
         self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
                                 current, bg=self.CRSR_COLOR)
@@ -150,12 +154,13 @@ class ViNav(application.Application):
         word = Word(self, x, y, text, current, life=random.randint(10, 20))
         word.ticks = self.ticks % self.UPDATE_TICKS
         self.words[word.id] = word
-        line = self.bg.display[word.y]
-        self.bg.display[y] = line[:x] + text + line[x + len(text):]
-        self.text = ' \n'.join([line.rstrip() for line in self.bg.display])
+        line = self.display[word.y]
+        self.display[y] = line[:x] + text + line[x + len(text):]
+        self.bg.display = [self.display]
+        self.text = ' \n'.join([line.rstrip() for line in self.display])
         self.spawned = current
 
-    def tick(self, current):
+    def tick(self, current, delta):
         """Do frame actions"""
 
         if self.time_based and current - self.updated > self.frequency:
@@ -171,8 +176,8 @@ class ViNav(application.Application):
 
     def update_word(self, word, current):
         if word.life == 0:
-            self.clear_actor(word)
             del self.words[word.id]
+            word.destroy()
             return
         word.set_life(word.life - 1, current)
 
