@@ -153,11 +153,8 @@ class Actor(object):
 
     updated = property(_get_updated, _set_updated)
 
-    def collisions(self, other, x=None, y=None):
+    def collisions(self, x=None, y=None):
         """Returns a set of coordinates to check for collisions.
-
-        We pass other to allow Actors to have different collision
-        patterns with different types of actors.
 
         We optionally pass x and y to support checking collisions
         on potential locations"""
@@ -168,7 +165,7 @@ class Actor(object):
         coords = []
         for xoffset in xrange(self.hsize):
             for yoffset in xrange(self.vsize):
-                if ord(self.get_ch(x, y)[0]):
+                if ord(self.get_ch(xoffset, yoffset)[0]):
                     coords.append((x + xoffset, y + yoffset))
         return set(coords)
 

@@ -28,26 +28,24 @@ from jinxes import application
 from jinxes import utils
 
 
-class Monster(actor.Actor):
+class Wider(actor.Actor):
     """Actor that collides in a + pattern around location."""
-    def collisions(self, other, x=None, y=None):
-        if not isinstance(other, Monster):
-            if x is None:
-                x = self.x
-            if y is None:
-                y = self.y
-            lines = []
-            lines.append('\0' + ' ' * self.hsize + '\0')
-            for line in self.display:
-                lines.append([' '] + line + [' '])
-            lines.append('\0' + ' ' * self.hsize + '\0')
-            coords = []
-            for xoffset in xrange(self.hsize + 2):
-                for yoffset in xrange(self.vsize + 2):
-                    if ord(lines[yoffset][xoffset]):
-                        coords.append((x + xoffset - 1, y + yoffset - 1))
-            return set(coords)
-        return super(Monster, self).collisions(other, x, y)
+    def collisions(self, x=None, y=None):
+        if x is None:
+            x = self.x
+        if y is None:
+            y = self.y
+        lines = []
+        lines.append('\0' + ' ' * self.hsize + '\0')
+        for line in self.display:
+            lines.append([' '] + line + [' '])
+        lines.append('\0' + ' ' * self.hsize + '\0')
+        coords = []
+        for xoffset in xrange(self.hsize + 2):
+            for yoffset in xrange(self.vsize + 2):
+                if ord(lines[yoffset][xoffset]):
+                    coords.append((x + xoffset - 1, y + yoffset - 1))
+        return set(coords)
 
 
 class Game(application.Application):
@@ -67,6 +65,8 @@ class Game(application.Application):
 
     def initialize(self, current):
         super(Game, self).initialize(current)
+        if hasattr(self, 'msg'):
+            self.msg.destroy()
         self.border()
         self.setup(current)
 
@@ -78,12 +78,12 @@ class Game(application.Application):
             x = random.randint(self.left + 3, self.right)
             speed = random.uniform(0.0, 1.0)
             color = utils.rgb_to_color(5 - int(speed * 5), 0, 0)
-            monster = Monster(self, x, y, self.MONSTER_CHAR,
+            monster = Wider(self, x, y, self.MONSTER_CHAR,
                               current, fg=color)
             monster.frequency = (self.MONSTER_FASTEST + speed *
                                  (self.MONSTER_SLOWEST - self.MONSTER_FASTEST))
             self.monsters[monster.id] = monster
-        self.plr = actor.Actor(self, self.left, self.top, self.PLR_CHAR,
+        self.plr = Wider(self, self.left, self.top, self.PLR_CHAR,
                                current, fg=self.PLAYER_COLOR)
         self.goal = actor.Actor(self, self.right, self.bottom, self.GOAL_CHAR,
                                 current, fg=self.GOAL_COLOR)
@@ -106,16 +106,20 @@ class Game(application.Application):
                 monster.move(current, x, y)
 
     def handle_k(self, current):
-        self.plr.move(current, self.plr.x, self.plr.y - 1)
+        if not self.paused:
+            self.plr.move(current, self.plr.x, self.plr.y - 1)
 
     def handle_j(self, current):
-        self.plr.move(current, self.plr.x, self.plr.y + 1)
+        if not self.paused:
+            self.plr.move(current, self.plr.x, self.plr.y + 1)
 
     def handle_h(self, current):
-        self.plr.move(current, self.plr.x - 1, self.plr.y)
+        if not self.paused:
+            self.plr.move(current, self.plr.x - 1, self.plr.y)
 
     def handle_l(self, current):
-        self.plr.move(current, self.plr.x + 1, self.plr.y)
+        if not self.paused:
+            self.plr.move(current, self.plr.x + 1, self.plr.y)
 
     def handle_q(self, current):
         raise application.Exit()
@@ -136,13 +140,14 @@ class Game(application.Application):
     def is_monster(self, actor):
         return actor.id in self.monsters
 
-    def collide(self, actor, other, current, collisions):
+    def collide(self, actor, other, current, collisions, floatx, floaty):
         if self.is_monster(actor) and self.is_monster(other):
-            return False
+            return actor.x != other.x and actor.y != other.y
         if self.is_monster(actor) and self.is_goal(other):
             return False
         if self.is_player(actor) and self.is_goal(other):
-            self.win()
+            if actor.x == other.x and actor.y == other.y:
+                self.win()
             return True
         if (self.is_player(actor) and self.is_monster(other) or
            self.is_monster(actor) and self.is_player(other)):
@@ -151,13 +156,11 @@ class Game(application.Application):
         return True
 
     def win(self):
-        self.draw_actor(actor.Actor(self, 3, 3, self.WIN_MSG,
-                                    fg=self.GOAL_COLOR))
+        self.msg = actor.Actor(self, 3, 3, self.WIN_MSG, fg=self.GOAL_COLOR)
         self.paused = True
 
     def lose(self):
-        self.draw_actor(actor.Actor(self, 3, 3, self.LOSE_MSG,
-                                    fg=self.LOSE_COLOR))
+        self.msg = actor.Actor(self, 3, 3, self.LOSE_MSG, fg=self.LOSE_COLOR)
         self.paused = True
 
 

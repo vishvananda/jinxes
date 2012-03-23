@@ -57,10 +57,10 @@ class Application(object):
         scr.nodelay(1)
         self.scr = scr
         scr.bkgdset(ord(self.BG_CHAR), self.default_brush)
-        scr.refresh()
         self.actors = {}
         self.paused = False
         self.brush_stacks = {}
+        self._border = False
         self.run()
 
     def notify_created(self, actor):
@@ -110,7 +110,7 @@ class Application(object):
         self.right -= 1
 
     def border(self):
-        self.win.border()
+        self._border = True
         self.top += 1
         self.left += 1
         self.bottom -= 1
@@ -145,14 +145,19 @@ class Application(object):
         x = int(floatx)
         y = int(floaty)
         if actor.collides:
-            for other in self.actors.itervalues():
-                if not other.collides:
-                    continue
-                collisions = actor.collisions(other, x, y)
-                collisions = collisions.intersection(other.collisions(actor))
-                if other != actor and collisions:
-                    floatx, floaty = self.collide(actor, other, current,
-                                                  collisions, floatx, floaty)
+            actor_collisions = actor.collisions(x, y)
+            all_collisions = {}
+            for x, y in actor_collisions:
+                for other in self.actors_by_location[(x, y)]:
+                    if other == actor:
+                        continue
+                    if not other.collides:
+                        continue
+                    all_collisions.setdefault(other, []).append((x, y))
+            for other, collisions in all_collisions.iteritems():
+                if not self.collide(actor, other, current,
+                                    collisions, floatx, floaty):
+                    return actor._x, actor._y
         return floatx, floaty
 
     def set_location_cache(self, actor):
@@ -311,4 +316,6 @@ class Application(object):
             self.write(x, y, ch, fg, bg)
         if len(self.dirty_by_location):
             self.dirty_by_location = {}
+            if self._border:
+                self.win.border()
             self.win.refresh()
