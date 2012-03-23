@@ -1,0 +1,170 @@
+#!/usr/bin/env python
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright (c) 2012 Vishvananda Ishaya
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+"""
+Simple screen saver for jinxes library
+"""
+#         ____  __   _  _  ____  _  _  ___
+#        ( ___)(  ) ( \/ )(_  _)( \( )/ __)
+#         )__)  )(__ \  /  _)(_  )  (( (_-.
+#        (__)  (____)(__) (____)(_)\_)\___/
+#  ____  _____    __    ___  ____  ____  ____  ___
+# (_  _)(  _  )  /__\  / __)(_  _)( ___)(  _ \/ __)
+#   )(   )(_)(  /(__)\ \__ \  )(   )__)  )   /\__ \
+#  (__) (_____)(__)(__)(___/ (__) (____)(_)\_)(___/
+
+import logging
+import random
+
+from jinxes import actor
+from jinxes import application
+
+
+class Decayer(actor.Actor):
+    def __init__(self, app, x, y, text, current=None, life=20.0):
+        self.colors = [
+                 16, 52, 88, 124, 160,
+                 196, 202, 208, 214, 220,
+                 226, 190, 154, 118, 82,
+                 46, 83, 120, 157, 194,
+                 231,
+        ]
+        self._life = life
+        self.decay_rate = 1.0
+        super(Decayer, self).__init__(app, x, y, text, current)
+        # NOTE(vish): The above list can be generated with:
+        # from jinxes import utils
+        # self.colors = []
+        # for i in xrange(21):
+        #     if i > 15:
+        #         red = i - 15
+        #         green = 5
+        #         blue = i - 15
+        #     elif i > 10:
+        #         red = 15 - i
+        #         green = 5
+        #         blue = 0
+        #     elif i > 5:
+        #         red = 5
+        #         green = i - 5
+        #         blue = 0
+        #     else:
+        #         red = i
+        #         green = 0
+        #         blue = 0
+        #     color = utils.rgb_to_color(red, green, blue)
+        #     self.colors.append(color)
+
+
+    @property
+    def life(self):
+        return int(self._life)
+
+    def tick(self, current, delta):
+        super(Decayer, self).tick(current, delta)
+        oldlife = self.life
+        self._life = self._life - delta * self.decay_rate
+        if self.life <= 0:
+            self._life = 0.0
+        if oldlife != self.life:
+            self.animate(current, self._frame)
+        if self.life <= 0:
+            return self.destroy()
+
+    def get_ch(self, x, y):
+        ch, fg, bg, inverted = super(Decayer, self).get_ch(x, y)
+        color = self.colors[self.life]
+        return ch, color, bg, inverted
+
+class Toasters(application.Application):
+
+    def __init__(self, scr):
+        self.frequency = 0.02
+        super(Toasters, self).__init__(scr)
+
+    def initialize(self, current):
+        super(Toasters, self).initialize(current)
+        self.setup(current)
+
+    def setup(self, current):
+        self.ticks = 0
+        random.seed()
+        self.updated = current
+        self.spawn_rate = 3.0
+        self.num_to_spawn = 10.0
+        self.z = 0
+
+    def spawn_toaster(self, current):
+        display = [ # display
+"""\0\0\0\0\0___________
+\0\0\0\0/ __   __  /|
+\0\0\0/ /:/  /:/ / |
+\0\0/ /:/  /:/ /  |
+\0/ /:/  /:/ /   |
+/  ~~   ~~ /    |
+|~~~~~~~~~~|    /
+|    ::    |   /
+|    ==    |  /
+|    ::  @ | /
+!__________!/""",
+
+        ]
+        x = random.randint(self.left - 30, self.left + 30)
+        y = random.randint(self.top - 20, self.top + 20)
+        toaster = Decayer(self, x, y, display, current)
+        toaster.bordered = False
+        toaster.collides = False
+        toaster.xvel = random.uniform(10.0, 30.0)
+        toaster.yvel = random.uniform(2.5, 10.0)
+        toaster.decay_rate = random.uniform(1.0, 4.0)
+        toaster.frame_rate = 30.0
+        self.z += 1
+        toaster.z = self.z
+
+
+    def tick(self, current, delta):
+        """Do frame actions"""
+        super(Toasters, self).tick(current, delta)
+        self.num_to_spawn += delta * self.spawn_rate
+        for i in xrange(int(self.num_to_spawn)):
+            self.spawn_toaster(current)
+        self.num_to_spawn -= int(self.num_to_spawn)
+
+    def handle_q(self, current):
+        raise application.Exit()
+
+    def handle_r(self, current):
+        self.initialize(current)
+
+    def handle_resize(self, current):
+        self.initialize(current)
+
+    def is_toaster(self, actor):
+        return actor.id in self.toasters
+
+if __name__ == "__main__":
+    logger = logging.getLogger('jinxes')
+    hdlr = logging.FileHandler('jinxes.log')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+    logger.setLevel(logging.DEBUG)
+    application.run(Toasters)
+    with open('jinxes.log') as log:
+        data = log.read()
+        if data:
+            print data
