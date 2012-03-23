@@ -23,44 +23,117 @@ import uuid
 
 class Actor(object):
 
-    def __init__(self, app, x, y, display, updated=None, fg=None, bg=None):
+    def __init__(self, app, x, y, display, current=None,
+                 fg=None, bg=None, inverted=False):
+        self.id = unicode(uuid.uuid4())
         self.app = app
-        self.x = x
-        self.y = y
-        self.display = display
+        self.z = 0
+        self._x = x
+        self._y = y
+        self._frame = 0.0
         self.fg = fg
         self.bg = bg
-        self.id = unicode(uuid.uuid4())
-        self.app.notify_created(self)
-        self.updated = updated
-        self.visible = True
+        self.inverted = inverted
         self.transparent = False
         self.bordered = False
+        self.frame_rate = 30.0
+        self.xvel = 0.0
+        self.yvel = 0.0
+        self.collides = True
+        self.display = display
+        self.updated = current
+        self.visible = True
+        self.app.notify_created(self)
+
+    def __cmp__(self, other):
+        if not other:
+            return -1
+        result = cmp(self.z, other.z)
+        if result:
+            return result
+        return cmp(self.id, other.id)
+
+    @property
+    def x(self):
+        return int(self._x)
+
+    @property
+    def y(self):
+        return int(self._y)
+
+    @property
+    def frame(self):
+        return int(self._frame)
 
     def _get_display(self):
-        return self._display
+        frame = self._display[self.frame]
+        out = []
+        for line in frame:
+            out.append([char[0] for char in line])
+        return out
 
-    def _set_display(self, value):
-        if isinstance(value, basestring):
-            self._display = value.split('\n')
-        else:
-            self._display = value
-        self.hsize = max(len(line) for line in self._display)
-        self.vsize = len(self._display)
+    def _set_display(self, display):
+        if not isinstance(display, list):
+            display = [display]
+        self._display = []
+        for frame in display:
+            if isinstance(frame, basestring):
+                frame = frame.split('\n')
+            outframe = []
+            for line in frame:
+                outline = []
+                for char in line:
+                    if len(char) == 1:
+                        char = (char, self.fg, self.bg, self.inverted)
+                    outline.append(char)
+                outframe.append(outline)
+            self._display.append(outframe)
+        self.frames = len(self._display)
+        self.hsize = max(len(line) for line in self._display[0])
+        self.vsize = len(self._display[0])
 
     display = property(_get_display, _set_display)
 
     def get_ch(self, x, y):
         try:
-            return self.display[y][x]
+            return self._display[self.frame][y][x]
         except IndexError:
-            return '\0'
+            return ('\0', None, None, self.inverted)
+
+    def tick(self, current, delta):
+        oldframe = self.frame
+        newframe = self._frame + delta * self.frame_rate
+        while newframe >= self.frames:
+            newframe -= self.frames
+        if oldframe != int(newframe):
+            self.animate(current, newframe)
+        else:
+            self._frame = newframe
+        oldx, oldy = self.x, self.y
+        newx = self._x + delta * self.xvel
+        newy = self._y + delta * self.yvel
+        if oldx != int(newx) or oldy != int(newy):
+            self.move(current, newx, newy)
+        else:
+            self._x = newx
+            self._y = newy
+
+
+    def animate(self, current, frame):
+        self.app.notify_animating(self)
+        self._frame = frame
+        self.updated = current
+        self.app.notify_animated(self)
 
     def move(self, current, x, y):
-        if self.app.try_move(self, current, x, y):
+        x, y = self.app.try_move(self, current, x, y)
+        if x is not None or y is not None:
             self.app.notify_moving(self)
-            self.x = x
-            self.y = y
+            if x is not None:
+                self._x = x
+            if y is not None:
+                self._y = y
+            self.moved = current
             self.updated = current
             self.app.notify_moved(self)
 
@@ -98,6 +171,9 @@ class Actor(object):
         coords = []
         for xoffset in xrange(self.hsize):
             for yoffset in xrange(self.vsize):
-                if ord(self.display[yoffset][xoffset]):
+                if ord(self.get_ch(x, y)[0]):
                     coords.append((x + xoffset, y + yoffset))
         return set(coords)
+
+    def destroy(self):
+        self.app.notify_destroyed(self)

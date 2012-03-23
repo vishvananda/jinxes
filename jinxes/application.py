@@ -58,9 +58,7 @@ class Application(object):
         scr.bkgdset(ord(self.BG_CHAR), self.default_brush)
         scr.nodelay(1)
         self.scr = scr
-        self.actors = weakref.WeakValueDictionary()
-        self.visible_actors = weakref.WeakValueDictionary()
-        self.updated_actors = weakref.WeakValueDictionary()
+        self.actors = {}
         self.paused = False
         self.brush_stacks = {}
         self.run()
@@ -68,36 +66,42 @@ class Application(object):
     def notify_created(self, actor):
         self.actors[actor.id] = actor
 
+    def notify_destroyed(self, actor):
+        self.clear_location_cache(actor)
+        del self.actors[actor.id]
+
     def notify_visible(self, actor):
         if actor.visible:
             self.set_location_cache(actor)
-            self.visible_actors[actor.id] = actor
         else:
             self.clear_location_cache(actor)
-            if actor.id in self.visible_actors:
-                del self.visible_actors[actor.id]
 
     def notify_moving(self, actor):
+        pass
         self.clear_location_cache(actor)
-        self.clear_actor(actor)
+
+    def notify_animating(self, actor):
+        pass
+        self.clear_location_cache(actor)
 
     def notify_moved(self, actor):
-        self.set_location_cache(actor)
+        pass
+
+    def notify_animated(self, actor):
+        pass
 
     def notify_updated(self, actor):
         self.set_location_cache(actor)
-        self.updated_actors[actor.id] = actor
 
     def initialize(self, current):
         self.dirty = True
         self.scr.clear()
         self.bottom, self.right = self.scr.getmaxyx()
-        self.actors_by_location = []
+        self.actors_by_location = {}
         for x in xrange(self.right):
-            ylist = []
             for y in xrange(self.bottom):
-                ylist.append([])
-            self.actors_by_location.append(ylist)
+                self.actors_by_location[(x, y)] = []
+        self.dirty_by_location = {}
         self.top = 0
         self.left = 0
         self.bottom -= 1
@@ -110,62 +114,85 @@ class Application(object):
         self.bottom -= 1
         self.right -= 1
 
-    def try_move(self, actor, current, x, y):
-        if self.paused:
-            return False
-        if (actor.bordered and
-            (x < self.left or x + actor.hsize > self.right + 1 or
-            y < self.top or y + actor.vsize > self.bottom + 1)):
-            return False
-        for other in self.actors.itervalues():
-            collisions = actor.collisions(other, x, y)
-            collisions = collisions.intersection(other.collisions(actor))
-            if other != actor and collisions:
-                return self.collide(actor, other, current, collisions)
-        return True
+    def try_move(self, actor, current, floatx, floaty):
+        x = int(floatx)
+        y = int(floaty)
+        xvel, yvel = None, None
+        if actor.bordered:
+            if x < self.left:
+                floatx = -floatx
+                xvel = -xvel
+            elif x + actor.hsize >= self.right:
+                floatx = floatx - (floatx - self.right)
+                xvel = -xvel
+            if y < self.top:
+                floaty = -floaty
+                yvel = -yvel
+            elif y + actor.vsize >= self.bottomx:
+                floaty = floaty - (floaty - self.bottom)
+                yvel = -yvel
+        if xvel:
+            actor.xvel = xvel
+        if yvel:
+            actor.xvel = yvel
+        if actor.collides:
+            for other in self.actors.itervalues():
+                if not other.collides:
+                    continue
+                collisions = actor.collisions(other, x, y)
+                collisions = collisions.intersection(other.collisions(actor))
+                if other != actor and collisions:
+                    return self.collide(actor, other, current,
+                                        collisions, floatx, floaty)
+        return floatx, floaty
 
     def set_location_cache(self, actor):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
-                if ord(actor.get_ch(xoffset, yoffset)):
+                if ord(actor.get_ch(xoffset, yoffset)[0]):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
-                    ref = weakref.ref(actor)
                     if (x >= 0 and x < self.right
-                        and y >= 0 and y <= self.bottom
-                        and ref not in self.actors_by_location[x][y]):
-                        self.actors_by_location[x][y].append(ref)
+                        and y >= 0 and y < self.bottom):
+                        self.dirty_by_location[(x, y)] = True
+                        if actor not in self.actors_by_location[(x, y)]:
+                            actors = list(self.actors_by_location[(x, y)])
+                            for i, other in enumerate(actors):
+                                if actor < other:
+                                    break
+                            else:
+                                self.actors_by_location[(x, y)].append(actor)
+                                continue
+                            self.actors_by_location[(x, y)].insert(i, actor)
 
     def clear_location_cache(self, actor):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
-                if ord(actor.get_ch(xoffset, yoffset)):
+                if ord(actor.get_ch(xoffset, yoffset)[0]):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
-                    ref = weakref.ref(actor)
                     if (x >= 0 and x < self.right
-                        and y >= 0 and y <= self.bottom
-                        and ref not in self.actors_by_location[x][y]):
-                        self.actors_by_location[x][y].remove(ref)
+                        and y >= 0 and y < self.bottom):
+                        self.dirty_by_location[(x, y)] = True
+                        if actor in self.actors_by_location[(x, y)]:
+                            self.actors_by_location[(x, y)].remove(actor)
 
     def get_char_at_loc(self, x, y, ignore=None):
-        if self.actors_by_location[x][y]:
-            for item in reversed(self.actors_by_location[x][y]):
-                actor = item()
-                if actor and actor != ignore and not actor.transparent:
-                    return actor.get_ch(x - actor.x, y - actor.y)
-        return self.BG_CHAR
+        for actor in reversed(self.actors_by_location[(x, y)]):
+            if actor and actor != ignore and not actor.transparent:
+                char = actor.get_ch(x - actor.x, y - actor.y)[0]
+                if ord(char):
+                    return char, actor
+        return self.BG_CHAR, None
 
     def get_colors_at_loc(self, x, y, ignore=None):
         fg = None
         bg = None
-        for item in reversed(self.actors_by_location[x][y]):
-            actor = item()
+        for actor in reversed(self.actors_by_location[(x, y)]):
             if actor and actor != ignore:
-                if actor.fg:
-                    fg = actor.fg
-                if actor.bg:
-                    bg = actor.bg
+                _ch, fg, bg, inverted = actor.get_ch(x - actor.x, y - actor.y)
+                if inverted:
+                    fg, bg = bg, fg
             if fg and bg:
                 return fg, bg
         if not fg:
@@ -174,11 +201,35 @@ class Application(object):
             bg = self.DEFAULT_BG_COLOR
         return fg, bg
 
-    def collide(self, actor, other, current, collisions):
+    def draw_location(self, x, y):
+        ch, fg, bg = None, None, None
+        for actor in reversed(self.actors_by_location[(x, y)]):
+            if actor:
+                c, f, b, inv = actor.get_ch(x - actor.x, y - actor.y)
+                if inv:
+                    f, b = b, f
+                if ch is None and ord(c) and not actor.transparent:
+                    ch = c.encode('utf-8')
+                if fg is None:
+                    fg = f
+                if bg is None:
+                    bg = b
+                if ch is not None and fg is not None and bg is not None:
+                    break
+
+        ch = ch or self.BG_CHAR
+        fg = fg or self.DEFAULT_FG_COLOR
+        bg = bg or self.DEFAULT_BG_COLOR
+        if fg == self.DEFAULT_BG_COLOR:
+            raise Exception()
+
+        self.write(x, y, ch, fg, bg)
+
+    def collide(self, actor, other, current, collisions, floatx, floaty):
         """Handle collision between actor and other.
 
-        Return True to allow the movement."""
-        return False
+        Return floatx, floaty to allow the movement."""
+        return floatx, floaty
 
     def draw_actor(self, actor, xstart=0, ystart=0,
                    width=None, height=None, clear=False):
@@ -189,23 +240,27 @@ class Application(object):
             height = actor.vsize - ystart
         for xoffset in xrange(xstart, xstart + width):
             for yoffset in xrange(ystart, ystart + height):
-                char = actor.get_ch(xoffset, yoffset)
+                char, fg, bg, inverted = actor.get_ch(xoffset, yoffset)
+                if clear:
+                    fg, bg = None, None
                 x = actor.x + xoffset
                 y = actor.y + yoffset
                 if (x >= 0 and x <= self.right
                     and y >= 0 and y <= self.bottom
                     and ord(char)):
-                    if actor.transparent or clear:
-                        old_char = self.get_char_at_loc(x, y, actor)
+                    old_char, other = self.get_char_at_loc(x, y, actor)
+                    if other and other > actor:
+                        continue
+                    elif actor.transparent or clear:
                         out = old_char.encode('utf-8')
                     else:
                         out = char.encode('utf-8')
-                    fg, bg = None, None
-                    if not actor.fg or not actor.bg:
-                        fg, bg = self.get_colors_at_loc(x, y, actor)
-                    if not clear:
-                        fg = actor.fg or fg
-                        bg = actor.bg or bg
+                    if not fg or not bg:
+                        oldfg, oldbg = self.get_colors_at_loc(x, y, actor)
+                    fg = fg or oldfg
+                    bg = bg or oldbg
+                    if inverted and not clear:
+                        fg, bg = bg, fg
                     self.write(x, y, out, fg, bg)
 
     def clear_actor(self, actor):
@@ -267,12 +322,14 @@ class Application(object):
     def run(self):
         """Endless processing loop."""
         try:
-            current = time.time()
+            updated = current = time.time()
             self.initialize(current)
             while True:
                 self.process_input(current)
                 if not self.paused:
-                    self.tick(current)
+                    delta = current - updated
+                    self.tick(current, delta)
+                    updated = current
                 self.redraw(current)
                 current = time.time()
         except (Exit, KeyboardInterrupt):
@@ -297,16 +354,17 @@ class Application(object):
         if method:
             method(current)
 
-    def tick(self, current):
+    def tick(self, current, delta):
         """Do frame actions."""
-        pass
+        for key in list(self.actors.iterkeys()):
+            actor = self.actors[key]
+            actor.tick(current, delta)
 
     def redraw(self, current):
         if self.dirty:
             self.scr.refresh()
             self.dirty = False
 
-        for actor in self.updated_actors.itervalues():
-            if actor.visible:
-                self.draw_actor(actor)
-        self.updated_actors = weakref.WeakValueDictionary()
+        for (x, y) in self.dirty_by_location.iterkeys():
+            self.draw_location(x, y)
+        self.dirty_by_location = {}
