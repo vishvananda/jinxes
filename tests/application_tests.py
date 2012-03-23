@@ -76,8 +76,8 @@ class CursesTestCase(unittest.TestCase):
         application.curses.curs_set(0)
         application.curses.init_pair(1, mox.IgnoreArg(), mox.IgnoreArg())
         application.curses.color_pair(1).AndReturn(1)
-        scr.bkgdset(ord(' '), 1)
         scr.nodelay(1)
+        scr.bkgdset(ord(' '), 1)
         self.mox.ReplayAll()
         TestApp(scr, run=run)
         self.mox.VerifyAll()
@@ -97,8 +97,13 @@ class FakeCurses(object):
     def color_pair(self, int_id):
         return int_id
 
+    def newwin(self, *args):
+        return FakeScr()
 
 class FakeScr(object):
+    def bkgd(self, *args, **kwargs):
+        pass
+
     def bkgdset(self, *args, **kwargs):
         pass
 
