@@ -140,10 +140,10 @@ class Application(object):
                     actor.yvel = -actor.yvel
                 else:
                     floaty = self.bottom + 1 - actor.vsize
-        if floatx < self.left:
-            floatx = self.left
-        if floaty < self.top:
-            floaty = self.top
+            if floatx < self.left:
+                floatx = self.left
+            if floaty < self.top:
+                floaty = self.top
         x = int(floatx)
         y = int(floaty)
         if actor.collides:

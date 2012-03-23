@@ -39,51 +39,59 @@ BREAD = [
 |     ||
 '-----'`"""]
 TOASTER = [
-"""\0\0\0\0\0\0\0\0\0___________
-\0\0\0\0\0\0\0\0|\  __   __ \\  _______
-\0\0______| \ \:\  \:\ \\/       \\
-\0/      \  \ \:\  \:\ \\  ______\\
-|  ______   \ \:\  \:\ \\/\0\0\0\0\0\0\0\\
-| /\0\0\0\0\0\\\\  \ ~~   ~~  \\
-|/\0\0\0\0\0\0\0\    |~~~~~~~~~~|
-\0\0\0\0\0\0\0\0\0\0\   |    ::    |
-\0\0\0\0\0\0\0\0\0\0\0\  |    ==    |
-\0\0\0\0\0\0\0\0\0\0\0\0\ |    ::  @ |
-\0\0\0\0\0\0\0\0\0\0\0\0\0\!__________!""",
-"""\0\0\0\0\0\0\0\0\0___________
-\0\0\0\0\0\0\0\0|\  __   __ \\
-\0\0\0\0\0\0\0\0| \ \:\  \:\ \\ _______
-\0\0______|  \ \:\  \:\ \\       \\
-\0/          \ \:\  \:\ \\ ______\\
-| ______     \ ~~   ~~  \\\0\0\0\0\0\0\0\\
-|/\0\0\0\0\0\0\0\    |~~~~~~~~~~|
-\0\0\0\0\0\0\0\0\0\0\   |    ::    |
-\0\0\0\0\0\0\0\0\0\0\0\  |    ==    |
-\0\0\0\0\0\0\0\0\0\0\0\0\ |    ::  @ |
-\0\0\0\0\0\0\0\0\0\0\0\0\0\!__________!""",
-"""\0\0\0\0\0\0\0\0\0___________
-\0\0\0\0\0\0\0\0|\  __   __ \\
-\0\0\0\0\0\0\0\0| \ \:\  \:\ \\
-\0\0\0\0\0\0\0\0|  \ \:\  \:\ \\_______/|
-\ ______|   \ \:\  \:\ \\       |
-|            \ ~~   ~~  \\______/
-\0\ _______    |~~~~~~~~~~|
-\0\0\0\0\0\0\0\0\0\0\   |    ::    |
-\0\0\0\0\0\0\0\0\0\0\0\  |    ==    |
-\0\0\0\0\0\0\0\0\0\0\0\0\ |    ::  @ |
-\0\0\0\0\0\0\0\0\0\0\0\0\0\!__________!""",
-"""\0\0\0\0\0\0\0\0\0___________
-\0\0\0\0\0\0\0\0|\  __   __ \\
-\0\0\0\0\0\0\0\0| \ \:\  \:\ \\ _______
-\0\0______|  \ \:\  \:\ \\       \\
-\0/          \ \:\  \:\ \\ ______\\
-| ______     \ ~~   ~~  \\\0\0\0\0\0\0\0\\
-|/\0\0\0\0\0\0\0\    |~~~~~~~~~~|
-\0\0\0\0\0\0\0\0\0\0\   |    ::    |
-\0\0\0\0\0\0\0\0\0\0\0\  |    ==    |
-\0\0\0\0\0\0\0\0\0\0\0\0\ |    ::  @ |
-\0\0\0\0\0\0\0\0\0\0\0\0\0\!__________!""",
+r"""
+XXXXXXXXX___________
+XXXXXXXX|\  __   __ \  _______
+XX______| \ \:\  \:\ \/       \
+X/      \  \ \:\  \:\ \  ______\
+|  ______   \ \:\  \:\ \/XXXXXXX\
+| /XXXXX\\   \ ~~   ~~  \
+|/XXXXXXX\    |~~~~~~~~~~|
+XXXXXXXXXX\   |    ::    |
+XXXXXXXXXXX\  |    ==    |
+XXXXXXXXXXXX\ |    ::  @ |
+XXXXXXXXXXXXX\!__________!""",
+r"""
+XXXXXXXXX___________
+XXXXXXXX|\  __   __ \
+XXXXXXXX| \ \:\  \:\ \ _______
+XX______|  \ \:\  \:\ \       \
+X/          \ \:\  \:\ \ ______\
+| _______    \ ~~   ~~  \XXXXXXX\
+|/XXXXXXX\    |~~~~~~~~~~|
+XXXXXXXXXX\   |    ::    |
+XXXXXXXXXXX\  |    ==    |
+XXXXXXXXXXXX\ |    ::  @ |
+XXXXXXXXXXXXX\!__________!""",
+r"""
+XXXXXXXXX___________
+XXXXXXXX|\  __   __ \
+XXXXXXXX| \ \:\  \:\ \
+XXXXXXXX|  \ \:\  \:\ \_______/|
+\ ______|   \ \:\  \:\ \       |
+|            \ ~~   ~~  \______/
+X\ _______    |~~~~~~~~~~|
+XXXXXXXXXX\   |    ::    |
+XXXXXXXXXXX\  |    ==    |
+XXXXXXXXXXXX\ |    ::  @ |
+XXXXXXXXXXXXX\!__________!""",
+r"""
+XXXXXXXXX___________
+XXXXXXXX|\  __   __ \
+XXXXXXXX| \ \:\  \:\ \ _______
+XX______|  \ \:\  \:\ \       \
+X/          \ \:\  \:\ \ ______\
+| _______    \ ~~   ~~  \XXXXXXX\
+|/XXXXXXX\    |~~~~~~~~~~|
+XXXXXXXXXX\   |    ::    |
+XXXXXXXXXXX\  |    ==    |
+XXXXXXXXXXXX\ |    ::  @ |
+XXXXXXXXXXXXX\!__________!""",
 ]
+
+TOASTER = [item.replace('X', '\0').strip() for item in TOASTER]
+
+
 class Decayer(actor.Actor):
     def __init__(self, app, x, y, text, current=None, life=20.0):
         self.colors = [
@@ -159,8 +167,12 @@ class Toasters(application.Application):
         self.z = 0
 
     def spawn_toaster(self, current):
-        x = random.randint(self.left - 30, self.left + 30)
-        y = random.randint(self.top - 20, self.top + 20)
+        x = random.randint(self.left - 100, self.right - 60)
+        if x < -20:
+            x = -20
+            y = random.randint(self.top - 20, self.bottom - 20)
+        else:
+            y = random.randint(self.top - 20, self.top - 10)
         display = random.choice((TOASTER, BREAD))
         toaster = Decayer(self, x, y, display, current)
         toaster.bordered = False
@@ -180,6 +192,9 @@ class Toasters(application.Application):
         for i in xrange(int(self.num_to_spawn)):
             self.spawn_toaster(current)
         self.num_to_spawn -= int(self.num_to_spawn)
+        for actor in list(self.actors.itervalues()):
+            if actor.x > self.right or actor.y > self.bottom:
+                actor.destroy()
 
     def handle_q(self, current):
         raise application.Exit()
