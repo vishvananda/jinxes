@@ -159,56 +159,21 @@ class ApplicationTestCase(unittest.TestCase):
 
     def test_tick_exit(self):
 
-        def tick(app, current):
+        def tick(app, current, delta):
             raise application.Exit()
         TestApp(self.scr, tick=tick)
 
     def test_actors(self):
 
-        def tick(app, current):
+        def tick(app, current, delta):
             actor1 = FakeActor(1)
             app.notify_created(actor1)
             self.assertEqual(dict(app.actors), {1: actor1})
             actor2 = FakeActor(2)
             app.notify_created(actor2)
             self.assertEqual(dict(app.actors), {1: actor1, 2: actor2})
-            actor1 = None
+            app.notify_destroyed(actor1)
             self.assertEqual(dict(app.actors), {2: actor2})
             raise application.Exit()
         TestApp(self.scr, tick=tick)
 
-    def test_updated_actors(self):
-
-        def tick(app, current):
-            actor1 = FakeActor(1)
-            app.notify_updated(actor1)
-            self.assertEqual(dict(app.updated_actors), {1: actor1})
-            actor2 = FakeActor(2)
-            app.notify_updated(actor2)
-            self.assertEqual(dict(app.updated_actors), {1: actor1, 2: actor2})
-            actor1 = None
-            self.assertEqual(dict(app.updated_actors), {2: actor2})
-            raise application.Exit()
-        TestApp(self.scr, tick=tick)
-
-    def test_visible_actors(self):
-
-        def tick(app, current):
-            actor1 = FakeActor(1)
-            actor1.visible = True
-            app.notify_visible(actor1)
-            self.assertEqual(dict(app.visible_actors), {1: actor1})
-            actor2 = FakeActor(2)
-            actor2.visible = False
-            app.notify_visible(actor2)
-            self.assertEqual(dict(app.visible_actors), {1: actor1})
-            actor2.visible = True
-            app.notify_visible(actor2)
-            self.assertEqual(dict(app.visible_actors), {1: actor1, 2: actor2})
-            actor1.visible = False
-            app.notify_visible(actor1)
-            self.assertEqual(dict(app.visible_actors), {2: actor2})
-            actor2 = None
-            self.assertEqual(dict(app.visible_actors), {})
-            raise application.Exit()
-        TestApp(self.scr, tick=tick)

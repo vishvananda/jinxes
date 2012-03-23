@@ -41,9 +41,9 @@ class Actor(object):
         self.yvel = 0.0
         self.collides = True
         self.display = display
+        self.app.notify_created(self)
         self.updated = current
         self.visible = True
-        self.app.notify_created(self)
 
     def __cmp__(self, other):
         if not other:
