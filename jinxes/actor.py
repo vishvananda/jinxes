@@ -35,6 +35,7 @@ class Actor(object):
         self.updated = updated
         self.visible = True
         self.transparent = False
+        self.bordered = False
 
     def _get_display(self):
         return self._display

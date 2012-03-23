@@ -113,8 +113,9 @@ class Application(object):
     def try_move(self, actor, current, x, y):
         if self.paused:
             return False
-        if (x < self.left or x + actor.hsize > self.right + 1 or
-            y < self.top or y + actor.vsize > self.bottom + 1):
+        if (actor.bordered and
+            (x < self.left or x + actor.hsize > self.right + 1 or
+            y < self.top or y + actor.vsize > self.bottom + 1)):
             return False
         for other in self.actors.itervalues():
             collisions = actor.collisions(other, x, y)
@@ -130,7 +131,9 @@ class Application(object):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
                     ref = weakref.ref(actor)
-                    if ref not in self.actors_by_location[x][y]:
+                    if (x >= 0 and x < self.right
+                        and y >= 0 and y <= self.bottom
+                        and ref not in self.actors_by_location[x][y]):
                         self.actors_by_location[x][y].append(ref)
 
     def clear_location_cache(self, actor):
@@ -140,7 +143,9 @@ class Application(object):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
                     ref = weakref.ref(actor)
-                    if ref in self.actors_by_location[x][y]:
+                    if (x >= 0 and x < self.right
+                        and y >= 0 and y <= self.bottom
+                        and ref not in self.actors_by_location[x][y]):
                         self.actors_by_location[x][y].remove(ref)
 
     def get_char_at_loc(self, x, y, ignore=None):
@@ -185,9 +190,11 @@ class Application(object):
         for xoffset in xrange(xstart, xstart + width):
             for yoffset in xrange(ystart, ystart + height):
                 char = actor.get_ch(xoffset, yoffset)
-                if ord(char):
-                    x = actor.x + xoffset
-                    y = actor.y + yoffset
+                x = actor.x + xoffset
+                y = actor.y + yoffset
+                if (x >= 0 and x <= self.right
+                    and y >= 0 and y <= self.bottom
+                    and ord(char)):
                     if actor.transparent or clear:
                         old_char = self.get_char_at_loc(x, y, actor)
                         out = old_char.encode('utf-8')
