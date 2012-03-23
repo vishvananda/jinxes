@@ -126,7 +126,7 @@ class Toasters(application.Application):
         x = random.randint(self.left - 30, self.left + 30)
         y = random.randint(self.top - 20, self.top + 20)
         toaster = Decayer(self, x, y, display, current)
-        toaster.bordered = False
+        toaster.bordered = True
         toaster.collides = False
         toaster.xvel = random.uniform(10.0, 30.0)
         toaster.yvel = random.uniform(2.5, 10.0)

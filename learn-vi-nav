@@ -117,7 +117,7 @@ class ViNav(application.Application):
         for i in xrange(numwords):
             newword = random.choice(self.markov_table[(w1, w2)])
             if newword == nonword:
-                break
+                w2, newword = random.choice(self.markov_table.keys())
             words.append(newword)
             w1, w2 = w2, newword
         return words
@@ -126,7 +126,7 @@ class ViNav(application.Application):
         self.ticks = 0
         random.seed()
         self.words = {}
-        words = self.get_markov_words(2000)
+        words = self.get_markov_words(3000)
         self.text = []
         self.display = []
         line = []
@@ -141,6 +141,8 @@ class ViNav(application.Application):
         self.text = ' \n'.join([line.rstrip() for line in self.display])
         self.bg = actor.Actor(self, self.left, self.top, [self.display],
                                 current, fg=self.TEXT_COLOR)
+        self.bg.dirties = False
+        self.bg.collides = False
         self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
                                 current, bg=self.CRSR_COLOR)
         self.crsr.transparent = True
@@ -152,6 +154,7 @@ class ViNav(application.Application):
         y = random.randint(self.top, self.bottom)
         x = random.randint(self.left, self.right - len(text))
         word = Word(self, x, y, text, current, life=random.randint(10, 20))
+        word.collides = False
         word.ticks = self.ticks % self.UPDATE_TICKS
         self.words[word.id] = word
         line = self.display[word.y]
@@ -162,7 +165,6 @@ class ViNav(application.Application):
 
     def tick(self, current, delta):
         """Do frame actions"""
-
         if self.time_based and current - self.updated > self.frequency:
             self.game_tick(current)
         if self.updated == current:
@@ -230,8 +232,8 @@ class ViNav(application.Application):
     def is_word(self, actor):
         return actor.id in self.words
 
-    def collide(self, actor, other, current, collisions):
-        return True
+    def collide(self, actor, other, current, collisions, floatx, floaty):
+        return floatx, floaty
 
 
 if __name__ == "__main__":

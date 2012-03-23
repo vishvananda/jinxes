@@ -35,7 +35,7 @@ class Actor(object):
         self.bg = bg
         self.inverted = inverted
         self.transparent = False
-        self.bordered = False
+        self.bordered = True
         self.frame_rate = 30.0
         self.xvel = 0.0
         self.yvel = 0.0
@@ -109,14 +109,9 @@ class Actor(object):
             self.animate(current, newframe)
         else:
             self._frame = newframe
-        oldx, oldy = self.x, self.y
         newx = self._x + delta * self.xvel
         newy = self._y + delta * self.yvel
-        if oldx != int(newx) or oldy != int(newy):
-            self.move(current, newx, newy)
-        else:
-            self._x = newx
-            self._y = newy
+        self.move(current, newx, newy)
 
 
     def animate(self, current, frame):
@@ -127,15 +122,17 @@ class Actor(object):
 
     def move(self, current, x, y):
         x, y = self.app.try_move(self, current, x, y)
-        if x is not None or y is not None:
-            self.app.notify_moving(self)
-            if x is not None:
+        oldx, oldy = self.x, self.y
+        if oldx != int(x) or oldy != int(y):
+                self.app.notify_moving(self)
                 self._x = x
-            if y is not None:
                 self._y = y
-            self.moved = current
-            self.updated = current
-            self.app.notify_moved(self)
+                self.moved = current
+                self.updated = current
+                self.app.notify_moved(self)
+        else:
+            self._x = x
+            self._y = y
 
     def _get_visible(self):
         return self._visible

@@ -54,9 +54,10 @@ class Application(object):
         self.brushes = {}
         self.default_brush = self.get_brush(self.DEFAULT_FG_COLOR,
                                             self.DEFAULT_BG_COLOR)
-        scr.bkgdset(ord(self.BG_CHAR), self.default_brush)
         scr.nodelay(1)
         self.scr = scr
+        scr.bkgdset(ord(self.BG_CHAR), self.default_brush)
+        scr.refresh()
         self.actors = {}
         self.paused = False
         self.brush_stacks = {}
@@ -96,44 +97,53 @@ class Application(object):
         self.dirty = True
         self.scr.clear()
         self.bottom, self.right = self.scr.getmaxyx()
+        self.top = 0
+        self.left = 0
         self.actors_by_location = {}
         for x in xrange(self.right):
             for y in xrange(self.bottom):
                 self.actors_by_location[(x, y)] = []
         self.dirty_by_location = {}
-        self.top = 0
-        self.left = 0
+        self.win = curses.newwin(0, 0, 0, 0)
+        self.win.bkgd(ord(self.BG_CHAR), self.default_brush)
         self.bottom -= 1
         self.right -= 1
 
     def border(self):
-        self.scr.border()
+        self.win.border()
         self.top += 1
         self.left += 1
         self.bottom -= 1
         self.right -= 1
 
     def try_move(self, actor, current, floatx, floaty):
+        if actor.bordered:
+            if floatx < self.left:
+                if actor.xvel:
+                    floatx = self.left + 0.5 - floatx
+                    actor.xvel = -actor.xvel
+                else:
+                    floatx = self.left
+            elif floatx + actor.hsize > self.right:
+                if actor.xvel:
+                    floatx = floatx - actor.hsize - 0.5 - (floatx - self.right)
+                    actor.xvel = -actor.xvel
+                else:
+                    floatx = self.right + 1 - actor.hsize
+            if floaty < self.top:
+                if actor.yvel:
+                    floaty = self.top + 0.5 - floaty
+                    actor.yvel = -actor.yvel
+                else:
+                    floaty = self.top
+            elif floaty + actor.vsize > self.bottom:
+                if actor.yvel:
+                    floaty = floaty - actor.vsize - 0.5 - (floaty - self.bottom)
+                    actor.yvel = -actor.yvel
+                else:
+                    floaty = self.bottom + 1 - actor.vsize
         x = int(floatx)
         y = int(floaty)
-        xvel, yvel = None, None
-        if actor.bordered:
-            if x < self.left:
-                floatx = -floatx
-                xvel = -xvel
-            elif x + actor.hsize >= self.right:
-                floatx = floatx - (floatx - self.right)
-                xvel = -xvel
-            if y < self.top:
-                floaty = -floaty
-                yvel = -yvel
-            elif y + actor.vsize >= self.bottomx:
-                floaty = floaty - (floaty - self.bottom)
-                yvel = -yvel
-        if xvel:
-            actor.xvel = xvel
-        if yvel:
-            actor.xvel = yvel
         if actor.collides:
             for other in self.actors.itervalues():
                 if not other.collides:
@@ -141,8 +151,8 @@ class Application(object):
                 collisions = actor.collisions(other, x, y)
                 collisions = collisions.intersection(other.collisions(actor))
                 if other != actor and collisions:
-                    return self.collide(actor, other, current,
-                                        collisions, floatx, floaty)
+                    floatx, floaty = self.collide(actor, other, current,
+                                                  collisions, floatx, floaty)
         return floatx, floaty
 
     def set_location_cache(self, actor):
@@ -151,8 +161,8 @@ class Application(object):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
-                    if (x >= 0 and x < self.right
-                        and y >= 0 and y < self.bottom):
+                    if (x >= 0 and x <= self.right
+                        and y >= 0 and y <= self.bottom):
                         self.dirty_by_location[(x, y)] = True
                         if actor not in self.actors_by_location[(x, y)]:
                             actors = list(self.actors_by_location[(x, y)])
@@ -170,8 +180,8 @@ class Application(object):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
                     x = actor.x + xoffset
                     y = actor.y + yoffset
-                    if (x >= 0 and x < self.right
-                        and y >= 0 and y < self.bottom):
+                    if (x >= 0 and x <= self.right
+                        and y >= 0 and y <= self.bottom):
                         self.dirty_by_location[(x, y)] = True
                         if actor in self.actors_by_location[(x, y)]:
                             self.actors_by_location[(x, y)].remove(actor)
@@ -207,7 +217,7 @@ class Application(object):
         """Write a text string at location with brush."""
         brush = self.get_brush(fg, bg)
         try:
-            self.scr.addstr(y, x, text, brush)
+            self.win.addstr(y, x, text, brush)
         except curses.error:
             if x == self.right and y == self.bottom:
                 pass
@@ -296,11 +306,9 @@ class Application(object):
             actor.tick(current, delta)
 
     def redraw(self, current):
-        if self.dirty:
-            self.scr.refresh()
-            self.dirty = False
-
         for (x, y) in self.dirty_by_location.iterkeys():
             ch, fg, bg = self.get_location(x, y)
             self.write(x, y, ch, fg, bg)
-        self.dirty_by_location = {}
+        if len(self.dirty_by_location):
+            self.dirty_by_location = {}
+            self.win.refresh()
