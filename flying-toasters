@@ -35,15 +35,27 @@ from jinxes import application
 from jinxes import utils
 
 BREAD = [
-"""( `^` ))
+"""
+( `^` ))
 |     ||
 |     ||
 '-----'`""",
 ]
 BREAD = [[[(char, 202, None, False)
            for char in line]
-           for line in frame.split('\n')]
+           for line in frame.strip().split('\n')]
            for frame in BREAD]
+TOAST = [
+"""
+( `^` ))
+| ### ||
+| ### ||
+'-----'`""",
+]
+TOAST = [[[(char, 202, None, False)
+           for char in line]
+           for line in frame.strip().split('\n')]
+           for frame in TOAST]
 TOASTER = [
 r"""
 XXXXXXXXX___________
@@ -145,29 +157,6 @@ class Decayer(actor.Actor):
         self._life = life
         self.decay_rate = 1.0
         super(Decayer, self).__init__(app, x, y, text, current)
-        # NOTE(vish): The above list can be generated with:
-        # from jinxes import utils
-        # self.colors = []
-        # for i in xrange(21):
-        #     if i > 15:
-        #         red = i - 15
-        #         green = 5
-        #         blue = i - 15
-        #     elif i > 10:
-        #         red = 15 - i
-        #         green = 5
-        #         blue = 0
-        #     elif i > 5:
-        #         red = 5
-        #         green = i - 5
-        #         blue = 0
-        #     else:
-        #         red = i
-        #         green = 0
-        #         blue = 0
-        #     color = utils.rgb_to_color(red, green, blue)
-        #     self.colors.append(color)
-
 
     @property
     def life(self):
@@ -214,7 +203,7 @@ class Toasters(application.Application):
             y = random.randint(self.top - 20, self.bottom - 20)
         else:
             y = random.randint(self.top - 20, self.top - 10)
-        display = random.choice((TOASTER, BREAD))
+        display = random.choice((TOASTER, BREAD, TOASTER, TOAST))
         if self.rainbow:
             toaster_class = Decayer
         else:
