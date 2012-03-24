@@ -68,7 +68,10 @@ class Application(object):
 
     def notify_destroyed(self, actor):
         self.clear_location_cache(actor)
-        del self.actors[actor.id]
+        try:
+            del self.actors[actor.id]
+        except KeyError:
+            pass
 
     def notify_visible(self, actor):
         if actor.visible:
@@ -77,11 +80,9 @@ class Application(object):
             self.clear_location_cache(actor)
 
     def notify_moving(self, actor):
-        pass
         self.clear_location_cache(actor)
 
     def notify_animating(self, actor):
-        pass
         self.clear_location_cache(actor)
 
     def notify_moved(self, actor):
@@ -124,7 +125,7 @@ class Application(object):
                     floatx = self.left
             elif floatx + actor.hsize > self.right + 2:
                 if actor.xvel:
-                    floatx = floatx - actor.hsize - 0.5 - (floatx - self.right)
+                    floatx = floatx - actor.hsize + 1.5 - (floatx - self.right)
                     actor.xvel = -actor.xvel
                 else:
                     floatx = self.right + 1 - actor.hsize
@@ -136,7 +137,7 @@ class Application(object):
                     floaty = self.top
             elif floaty + actor.vsize > self.bottom + 2:
                 if actor.yvel:
-                    floaty = floaty - actor.vsize - 0.5 - (floaty - self.bottom)
+                    floaty = floaty - actor.vsize + 1.5 - (floaty - self.bottom)
                     actor.yvel = -actor.yvel
                 else:
                     floaty = self.bottom + 1 - actor.vsize
@@ -144,13 +145,21 @@ class Application(object):
                 floatx = self.left
             if floaty < self.top:
                 floaty = self.top
+            if floatx > self.right + 0.99:
+                floatx = self.right + 0.99
+            if floaty > self.bottom + 0.99:
+                floaty = self.bottom + 0.99
         x = int(floatx)
         y = int(floaty)
         if actor.collides:
             actor_collisions = actor.collisions(x, y)
             all_collisions = {}
             for x, y in actor_collisions:
-                for other in self.actors_by_location[(x, y)]:
+                try:
+                    others = self.actors_by_location[(x, y)]
+                except KeyError:
+                    continue
+                for other in others:
                     if other == actor:
                         continue
                     if not other.collides:

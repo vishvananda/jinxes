@@ -28,7 +28,7 @@ from jinxes import application
 
 
 class Word(actor.Actor):
-    def __init__(self, app, x, y, text, current=None, life=20):
+    def __init__(self, app, x, y, text, current=None, life=20, bg=None):
         self.colors = [
                  16, 52, 88, 124, 160,
                  196, 202, 208, 214, 220,
@@ -37,7 +37,7 @@ class Word(actor.Actor):
                  231,
         ]
         self.life = life
-        super(Word, self).__init__(app, x, y, text, current)
+        super(Word, self).__init__(app, x, y, text, current, bg=bg)
         # NOTE(vish): The above list can be generated with:
         # from jinxes import utils
         # self.colors = []
@@ -140,19 +140,25 @@ class ViNav(application.Application):
                                 current, fg=self.TEXT_COLOR)
         self.bg.dirties = False
         self.bg.collides = False
+        self.bg.z = 0
         self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
                                 current, bg=self.CRSR_COLOR)
         self.crsr.transparent = True
+        self.crsr.z = 1
         self.updated = current
         self.paused = False
 
     def spawn_word(self, current):
-        text = random.choice(self.word_list) + ' '
+        text = random.choice(self.word_list)
+        text = random.choice((' ' + text, text, text + ' '))
         y = random.randint(self.top, self.bottom)
         x = random.randint(self.left, self.right - len(text))
-        word = Word(self, x, y, text, current, life=random.randint(10, 20))
+        word = Word(self, x, y, text, current, bg=241,
+                    life=random.randint(10, 20))
         word.collides = False
         word.ticks = self.ticks % self.UPDATE_TICKS
+        word.z = 2
+        word.bg = 12
         self.words[word.id] = word
         line = self.display[word.y]
         self.display[y] = line[:x] + text + line[x + len(text):]

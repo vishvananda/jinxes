@@ -92,6 +92,11 @@ class Game(application.Application):
                                 current, fg=self.GOAL_COLOR)
         self.paused = False
 
+    def restart(self, current):
+        for actor in list(self.actors.itervalues()):
+            actor.destroy()
+        self.initialize(current)
+
     def handle_k(self, current):
         if not self.paused:
             self.plr.move(current, self.plr.x, self.plr.y - 1)
@@ -113,10 +118,10 @@ class Game(application.Application):
 
     def handle_r(self, current):
         if self.paused:
-            self.initialize(current)
+            self.restart(current)
 
     def handle_resize(self, current):
-        self.initialize(current)
+        self.restart(current)
 
     def is_player(self, actor):
         return actor == self.plr
@@ -138,7 +143,12 @@ class Game(application.Application):
             else:
                 return True
         if self.is_monster(actor) and self.is_goal(other):
-            return False
+            if int(floatx) == other.x and int(floaty) == other.y:
+                actor.xvel = -actor.xvel
+                other.xvel = -other.xvel
+                actor.yvel = -actor.yvel
+                other.yvel = -other.yvel
+                return False
         if self.is_player(actor) and self.is_goal(other):
             if int(floatx) == other.x and int(floaty) == other.y:
                 self.win_game()
