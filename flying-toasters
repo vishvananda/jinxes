@@ -32,12 +32,18 @@ import random
 
 from jinxes import actor
 from jinxes import application
+from jinxes import utils
 
 BREAD = [
 """( `^` ))
 |     ||
 |     ||
-'-----'`"""]
+'-----'`""",
+]
+BREAD = [[[(char, 202, None, False)
+           for char in line]
+           for line in frame.split('\n')]
+           for frame in BREAD]
 TOASTER = [
 r"""
 XXXXXXXXX___________
@@ -89,7 +95,42 @@ XXXXXXXXXXXX\ |    ::  @ |
 XXXXXXXXXXXXX\!__________!""",
 ]
 
+TOASTER_COLORS = r"""
+wwwwwwwwwggggggggggg
+wwwwwwwwgg  gg   gg gwwwwwwwwwwww
+wwwwwwwwg g gog  gog gwwwwwwwwwww
+wwwwwwwwgwwg gog  gog gwwwwwwwwww
+wwwwwwwwgww g gog  gog gwwwwwwwww
+wwwwwwwwgww  g gg   gg  gwwwwwwww
+wwwwwwwwwgw   gggggggggggg
+wwwwwwwwwwg   g    kk    g
+wwwwwwwwwwwg  g    zz    g
+wwwwwwwwwwwwg g    kk  b g
+wwwwwwwwwwwwwggggggggggggg"""
 TOASTER = [item.replace('X', '\0').strip() for item in TOASTER]
+TOASTER_COLORS = TOASTER_COLORS.strip().split('\n')
+COLOR_MAP = {'g': utils.rgb_to_color(4, 5, 5),
+             'k': utils.grey_to_color(12),
+             'b': utils.rgb_to_color(1, 1, 5),
+             'z': utils.grey_to_color(6),
+             'o': utils.rgb_to_color(5, 0, 1),
+}
+OUT = []
+for frame in TOASTER:
+    outframe = []
+    for y, line in enumerate(frame.split('\n')):
+        outline = []
+        for x, char in enumerate(line):
+            color = 231
+            try:
+                symbol = TOASTER_COLORS[y][x]
+                color = COLOR_MAP[symbol]
+            except:
+                pass
+            outline.append((char, color, None, False))
+        outframe.append(outline)
+    OUT.append(outframe)
+TOASTER = OUT
 
 
 class Decayer(actor.Actor):
@@ -151,7 +192,7 @@ class Decayer(actor.Actor):
 class Toasters(application.Application):
 
     def __init__(self, scr):
-        self.frequency = 0.02
+        self.rainbow = False
         super(Toasters, self).__init__(scr)
 
     def initialize(self, current):
@@ -174,7 +215,11 @@ class Toasters(application.Application):
         else:
             y = random.randint(self.top - 20, self.top - 10)
         display = random.choice((TOASTER, BREAD))
-        toaster = Decayer(self, x, y, display, current)
+        if self.rainbow:
+            toaster_class = Decayer
+        else:
+            toaster_class = actor.Actor
+        toaster = toaster_class(self, x, y, display, current)
         toaster.bordered = False
         toaster.collides = False
         toaster.xvel = random.uniform(10.0, 30.0)
@@ -198,6 +243,9 @@ class Toasters(application.Application):
 
     def handle_q(self, current):
         raise application.Exit()
+
+    def handle_t(self, current):
+        self.rainbow = not self.rainbow
 
     def handle_r(self, current):
         self.initialize(current)
