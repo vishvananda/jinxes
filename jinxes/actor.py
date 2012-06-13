@@ -24,10 +24,10 @@ import uuid
 class Actor(object):
 
     def __init__(self, app, x, y, display, current=None,
-                 fg=None, bg=None, inverted=False):
+                 fg=None, bg=None, inverted=False, z=0):
         self.id = unicode(uuid.uuid4())
         self.app = app
-        self.z = 0
+        self.z = z
         self.x = x
         self.y = y
         self._frame = 0.0

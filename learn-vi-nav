@@ -28,7 +28,7 @@ from jinxes import application
 
 
 class Word(actor.Actor):
-    def __init__(self, app, x, y, text, current=None, life=20, bg=None):
+    def __init__(self, app, x, y, text, current=None, life=20, bg=None, z=0):
         self.colors = [
                  16, 52, 88, 124, 160,
                  196, 202, 208, 214, 220,
@@ -37,7 +37,7 @@ class Word(actor.Actor):
                  231,
         ]
         self.life = life
-        super(Word, self).__init__(app, x, y, text, current, bg=bg)
+        super(Word, self).__init__(app, x, y, text, current, bg=bg, z=z)
         # NOTE(vish): The above list can be generated with:
         # from jinxes import utils
         # self.colors = []
@@ -138,14 +138,11 @@ class ViNav(application.Application):
                 break
         self.text = ' \n'.join([line.rstrip() for line in self.display])
         self.bg = actor.Actor(self, self.left, self.top, [self.display],
-                                current, fg=self.TEXT_COLOR)
-        self.bg.dirties = False
+                              current, fg=self.TEXT_COLOR)
         self.bg.collides = False
-        self.bg.z = 0
         self.crsr = actor.Actor(self, self.x1 / 2, self.y1 / 2, self.CRSR_CHAR,
-                                current, bg=self.CRSR_COLOR)
+                                current, bg=self.CRSR_COLOR, z=2)
         self.crsr.transparent = True
-        self.crsr.z = 1
         self.updated = current
         self.paused = False
 
@@ -158,11 +155,9 @@ class ViNav(application.Application):
         x = random.uniform(halfx, 1.0 - halfx - word_width)
         y = random.uniform(halfy, 1.0 - halfy)
         word = Word(self, x, y, text, current, bg=241,
-                    life=random.randint(10, 20))
+                    life=random.randint(10, 20), z=1)
         word.collides = False
         word.ticks = self.ticks % self.UPDATE_TICKS
-        word.z = 2
-        word.bg = 12
         self.words[word.id] = word
         scrx, scry = self.project(x, y)
         line = self.display[scry]
