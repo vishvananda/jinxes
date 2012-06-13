@@ -21,6 +21,7 @@ Simple example game for jinxes library
 
 
 import logging
+import math
 import random
 
 from jinxes import actor
@@ -31,10 +32,11 @@ from jinxes import utils
 class Wider(actor.Actor):
     """Actor that collides in a + pattern around location."""
     def collisions(self, x=None, y=None):
+        screenx, screeny = self.app.project(x, y)
         if x is None:
-            x = self.x
+            x = screenx
         if y is None:
-            y = self.y
+            y = screeny
         lines = []
         lines.append('\0' + ' ' * self.hsize + '\0')
         for line in self.display:
@@ -54,8 +56,8 @@ class Game(application.Application):
     PLR_CHAR = [u"\u263A"]
     MONSTER_CHAR = [u"\u2603"]
     GOAL_CHAR = [u"\u2624"]
-    MONSTER_SLOWEST = -20.0
-    MONSTER_FASTEST = 20.0
+    MONSTER_MINVEL = -0.2
+    MONSTER_MAXVEL = 0.2
     NUM_MONSTERS = 60
     WIN_MSG = ["YOU WIN!!! (r to restart)"]
     LOSE_MSG = ["YOU LOSE!!! (r to restart)"]
@@ -70,25 +72,28 @@ class Game(application.Application):
         self.setup(current)
 
     def setup(self, current):
+        sqr_min = self.MONSTER_MINVEL * self.MONSTER_MINVEL
+        sqr_max = self.MONSTER_MAXVEL * self.MONSTER_MAXVEL
+        max_sqr = sqr_max if sqr_max > sqr_min else sqr_min
+        max_speed = math.sqrt(sqr_max + sqr_max)
         random.seed()
         self.monsters = {}
         for monster in xrange(self.NUM_MONSTERS):
-            y = random.randint(self.top + 3, self.bottom)
-            x = random.randint(self.left + 3, self.right)
-            speed = random.uniform(0.0, 1.0)
-            color = utils.rgb_to_color(5 - int(speed * 5), 0, 0)
+            y = random.uniform(0.1, 0.99)
+            x = random.uniform(0.1, 0.99)
+            xvel = random.uniform(self.MONSTER_MINVEL, self.MONSTER_MAXVEL)
+            yvel = random.uniform(self.MONSTER_MINVEL, self.MONSTER_MAXVEL)
+            speed = math.sqrt(xvel * xvel + yvel * yvel)
+            #raise Exception(speed, max_speed)
+            color = utils.rgb_to_color(1 + int(speed * 5 / max_speed), 0, 0)
             monster = Wider(self, x, y, self.MONSTER_CHAR,
                               current, fg=color)
-            monster.xvel = random.uniform(self.MONSTER_SLOWEST,
-                                          self.MONSTER_FASTEST)
-            monster.yvel = random.uniform(self.MONSTER_SLOWEST,
-                                          self.MONSTER_FASTEST)
-            monster.frequency = (self.MONSTER_FASTEST + speed *
-                                 (self.MONSTER_SLOWEST - self.MONSTER_FASTEST))
+            monster.xvel = xvel
+            monster.yvel = yvel
             self.monsters[monster.id] = monster
-        self.plr = Wider(self, self.left, self.top, self.PLR_CHAR,
+        self.plr = Wider(self, self.x1 / 2, self.y1 / 2, self.PLR_CHAR,
                                current, fg=self.PLAYER_COLOR)
-        self.goal = actor.Actor(self, self.right, self.bottom, self.GOAL_CHAR,
+        self.goal = actor.Actor(self, 1.0, 1.0, self.GOAL_CHAR,
                                 current, fg=self.GOAL_COLOR)
         self.paused = False
 
@@ -99,19 +104,19 @@ class Game(application.Application):
 
     def handle_k(self, current):
         if not self.paused:
-            self.plr.move(current, self.plr.x, self.plr.y - 1)
+            self.plr.move(current, self.plr.x, self.plr.y - self.y1)
 
     def handle_j(self, current):
         if not self.paused:
-            self.plr.move(current, self.plr.x, self.plr.y + 1)
+            self.plr.move(current, self.plr.x, self.plr.y + self.y1)
 
     def handle_h(self, current):
         if not self.paused:
-            self.plr.move(current, self.plr.x - 1, self.plr.y)
+            self.plr.move(current, self.plr.x - self.x1, self.plr.y)
 
     def handle_l(self, current):
         if not self.paused:
-            self.plr.move(current, self.plr.x + 1, self.plr.y)
+            self.plr.move(current, self.plr.x + self.x1, self.plr.y)
 
     def handle_q(self, current):
         raise application.Exit()
@@ -133,8 +138,10 @@ class Game(application.Application):
         return actor.id in self.monsters
 
     def collide(self, actor, other, current, collisions, floatx, floaty):
+        screenx, screeny = self.project(floatx, floaty)
+        oscrx, oscry = self.project(other.x, other.y)
         if self.is_monster(actor) and self.is_monster(other):
-            if int(floatx) == other.x and int(floaty) == other.y:
+            if screenx == oscrx and screeny == oscry:
                 actor.xvel = -actor.xvel
                 other.xvel = -other.xvel
                 actor.yvel = -actor.yvel
@@ -143,14 +150,14 @@ class Game(application.Application):
             else:
                 return True
         if self.is_monster(actor) and self.is_goal(other):
-            if int(floatx) == other.x and int(floaty) == other.y:
+            if screenx == oscrx and screeny == oscry:
                 actor.xvel = -actor.xvel
                 other.xvel = -other.xvel
                 actor.yvel = -actor.yvel
                 other.yvel = -other.yvel
                 return False
         if self.is_player(actor) and self.is_goal(other):
-            if int(floatx) == other.x and int(floaty) == other.y:
+            if screenx == oscrx and screeny == oscry:
                 self.win_game()
             return True
         if (self.is_player(actor) and self.is_monster(other) or
@@ -160,11 +167,13 @@ class Game(application.Application):
         return True
 
     def win_game(self):
-        self.msg = actor.Actor(self, 3, 3, self.WIN_MSG, fg=self.GOAL_COLOR)
+        self.msg = actor.Actor(self, 0.1, 0.1, self.WIN_MSG, fg=self.GOAL_COLOR)
+        self.msg.z = 1
         self.paused = True
 
     def lose_game(self):
-        self.msg = actor.Actor(self, 3, 3, self.LOSE_MSG, fg=self.LOSE_COLOR)
+        self.msg = actor.Actor(self, 0.1, 0.1, self.LOSE_MSG, fg=self.LOSE_COLOR)
+        self.msg.z = 1
         self.paused = True
 
 

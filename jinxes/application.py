@@ -95,62 +95,82 @@ class Application(object):
         self.set_location_cache(actor)
 
     def initialize(self, current):
-        self.bottom, self.right = self.scr.getmaxyx()
+        self.height, self.width = self.scr.getmaxyx()
         self.top = 0
         self.left = 0
         self.actors_by_location = {}
-        for x in xrange(self.right):
-            for y in xrange(self.bottom):
+        for x in xrange(self.width):
+            for y in xrange(self.height):
                 self.actors_by_location[(x, y)] = []
         self.dirty_by_location = {}
         self.win = curses.newwin(0, 0, 0, 0)
         self.win.bkgd(ord(self.BG_CHAR), self.default_brush)
-        self.bottom -= 1
-        self.right -= 1
 
     def border(self):
         self._border = True
         self.top += 1
         self.left += 1
-        self.bottom -= 1
-        self.right -= 1
+        self.width -= 2
+        self.height -= 2
+
+    def project(self, floatx, floaty):
+        """Project x, y in the range of 0 - 1 into app coordinates
+           left, top = 0, 0
+           +---+ > 0.0f = (edge of the screen)
+           |x  | <- 0.00f - 0.33f = 0
+           | o |  <- 0.33f - 0.66f = 1
+           |  x|   <- 0.66f - 1.00f = 2
+           +---+ > 1.0f = 3 (edge of the screen)
+           right, bottom = 2, 2
+           width, height = 3, 3
+        """
+        x = int(floatx * self.width) + self.left
+        y = int(floaty * self.height) + self.top
+        return x, y
+
+    def unproject(self, x, y):
+        """Unproject x, y in app coordinates into the range of 0 - 1"""
+        floatx = x - self.left / self.width
+        floaty = y - self.top / self.height
+        return floatx, floaty
+
+    @property
+    def x1(self):
+        return 1.0 / self.width
+
+    @property
+    def y1(self):
+        return 1.0 / self.height
 
     def try_move(self, actor, current, floatx, floaty):
         if actor.bordered:
-            if floatx < self.left:
+            hsize = actor.hsize * 1.0 / self.width
+            vsize = actor.vsize * 1.0 / self.height
+            if floatx < 0.0:
                 if actor.xvel:
-                    floatx = self.left + 0.5 - floatx
+                    floatx = -floatx
                     actor.xvel = -actor.xvel
                 else:
-                    floatx = self.left
-            elif floatx + actor.hsize > self.right + 2:
+                    floatx = self.x1 / 2
+            elif floatx + hsize > 1.0:
                 if actor.xvel:
-                    floatx = floatx - actor.hsize + 1.5 - (floatx - self.right)
+                    floatx = 2.0 - floatx - hsize - hsize
                     actor.xvel = -actor.xvel
                 else:
-                    floatx = self.right + 1 - actor.hsize
-            if floaty < self.top:
+                    floatx = 1.0 - hsize + self.x1 / 2
+            if floaty < 0.0:
                 if actor.yvel:
-                    floaty = self.top + 0.5 - floaty
+                    floaty = -floaty
                     actor.yvel = -actor.yvel
                 else:
-                    floaty = self.top
-            elif floaty + actor.vsize > self.bottom + 2:
+                    floaty = self.y1 / 2
+            elif floaty + vsize > 1.0:
                 if actor.yvel:
-                    floaty = floaty - actor.vsize + 1.5 - (floaty - self.bottom)
+                    floaty = 2.0 - floaty - vsize - vsize
                     actor.yvel = -actor.yvel
                 else:
-                    floaty = self.bottom + 1 - actor.vsize
-            if floatx < self.left:
-                floatx = self.left
-            if floaty < self.top:
-                floaty = self.top
-            if floatx > self.right + 0.99:
-                floatx = self.right + 0.99
-            if floaty > self.bottom + 0.99:
-                floaty = self.bottom + 0.99
-        x = int(floatx)
-        y = int(floaty)
+                    floaty = 1.0 - vsize + self.y1 / 2
+        x, y = self.project(floatx, floaty)
         if actor.collides:
             actor_collisions = actor.collisions(x, y)
             all_collisions = {}
@@ -168,17 +188,18 @@ class Application(object):
             for other, collisions in all_collisions.iteritems():
                 if not self.collide(actor, other, current,
                                     collisions, floatx, floaty):
-                    return actor._x, actor._y
+                    return actor.x, actor.y
         return floatx, floaty
 
     def set_location_cache(self, actor):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
-                    x = actor.x + xoffset
-                    y = actor.y + yoffset
-                    if (x >= 0 and x <= self.right
-                        and y >= 0 and y <= self.bottom):
+                    screenx, screeny = self.project(actor.x, actor.y)
+                    x = screenx + xoffset
+                    y = screeny + yoffset
+                    if (x >= self.left and x < self.left + self.width
+                        and y >= self.top and y < self.top + self.height):
                         self.dirty_by_location[(x, y)] = True
                         if actor not in self.actors_by_location[(x, y)]:
                             actors = list(self.actors_by_location[(x, y)])
@@ -194,10 +215,11 @@ class Application(object):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
-                    x = actor.x + xoffset
-                    y = actor.y + yoffset
-                    if (x >= 0 and x <= self.right
-                        and y >= 0 and y <= self.bottom):
+                    screenx, screeny = self.project(actor.x, actor.y)
+                    x = screenx + xoffset
+                    y = screeny + yoffset
+                    if (x >= self.left and x < self.left + self.width
+                        and y >= self.top and y < self.top + self.height):
                         self.dirty_by_location[(x, y)] = True
                         if actor in self.actors_by_location[(x, y)]:
                             self.actors_by_location[(x, y)].remove(actor)
@@ -206,7 +228,8 @@ class Application(object):
         ch, fg, bg = None, None, None
         for actor in reversed(self.actors_by_location[(x, y)]):
             if actor:
-                c, f, b, inv = actor.get_ch(x - actor.x, y - actor.y)
+                screenx, screeny = self.project(actor.x, actor.y)
+                c, f, b, inv = actor.get_ch(x - screenx, y - screeny)
                 if inv:
                     f, b = b, f
                 if ch is None and ord(c) and not actor.transparent:
@@ -235,7 +258,7 @@ class Application(object):
         try:
             self.win.addstr(y, x, text, brush)
         except curses.error:
-            if x == self.right and y == self.bottom:
+            if x == self.width - 1 and y == self.height - 1:
                 pass
 
     def get_brush(self, fg_color=None, bg_color=None):
@@ -269,8 +292,8 @@ class Application(object):
         """Reclaim ids for brushes that are no longer being used."""
         used_brushes = set(['%s:%s' % (self.DEFAULT_FG_COLOR,
                                        self.DEFAULT_BG_COLOR)])
-        for x in xrange(self.right):
-            for y in xrange(self.bottom):
+        for x in xrange(self.width):
+            for y in xrange(self.height):
                 ch, fg, bg = self.get_location(x, y)
                 used_brushes.add('%s:%s' % (fg, bg))
         for str_id in self.allocated_brush_ids.keys():

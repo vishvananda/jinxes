@@ -197,12 +197,12 @@ class Toasters(application.Application):
         self.z = 0
 
     def spawn_toaster(self, current):
-        x = random.randint(self.left - 100, self.right - 60)
-        if x < -20:
-            x = -20
-            y = random.randint(self.top - 20, self.bottom - 20)
+        x = random.uniform(-1.0, 0.8)
+        if x < -0.2:
+            x = -0.2
+            y = random.uniform(-0.2, 0.8)
         else:
-            y = random.randint(self.top - 20, self.top - 10)
+            y = random.uniform(-0.2, -0.1)
         display = random.choice((TOASTER, BREAD, TOASTER, TOAST))
         if self.rainbow:
             toaster_class = Decayer
@@ -211,8 +211,8 @@ class Toasters(application.Application):
         toaster = toaster_class(self, x, y, display, current)
         toaster.bordered = False
         toaster.collides = False
-        toaster.xvel = random.uniform(10.0, 30.0)
-        toaster.yvel = random.uniform(2.5, 10.0)
+        toaster.xvel = random.uniform(0.03, 0.06)
+        toaster.yvel = random.uniform(0.03, 0.06)
         toaster.decay_rate = random.uniform(1.0, 4.0)
         toaster.frame_rate = 6.0
         self.z += 1
@@ -227,7 +227,7 @@ class Toasters(application.Application):
             self.spawn_toaster(current)
         self.num_to_spawn -= int(self.num_to_spawn)
         for actor in list(self.actors.itervalues()):
-            if actor.x > self.right or actor.y > self.bottom:
+            if actor.x > 1.0 or actor.y > 1.0:
                 actor.destroy()
 
     def handle_q(self, current):

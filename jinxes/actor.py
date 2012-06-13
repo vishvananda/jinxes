@@ -28,8 +28,8 @@ class Actor(object):
         self.id = unicode(uuid.uuid4())
         self.app = app
         self.z = 0
-        self._x = x
-        self._y = y
+        self.x = x
+        self.y = y
         self._frame = 0.0
         self.fg = fg
         self.bg = bg
@@ -52,14 +52,6 @@ class Actor(object):
         if result:
             return result
         return cmp(self.id, other.id)
-
-    @property
-    def x(self):
-        return int(self._x)
-
-    @property
-    def y(self):
-        return int(self._y)
 
     @property
     def frame(self):
@@ -109,8 +101,8 @@ class Actor(object):
             self.animate(current, newframe)
         else:
             self._frame = newframe
-        newx = self._x + delta * self.xvel
-        newy = self._y + delta * self.yvel
+        newx = self.x + delta * self.xvel
+        newy = self.y + delta * self.yvel
         self.move(current, newx, newy)
 
 
@@ -122,17 +114,18 @@ class Actor(object):
 
     def move(self, current, x, y):
         x, y = self.app.try_move(self, current, x, y)
-        oldx, oldy = self.x, self.y
-        if oldx != int(x) or oldy != int(y):
+        screenx, screeny = self.app.project(x, y)
+        oldx, oldy = self.app.project(self.x, self.y)
+        if oldx != screenx or oldy != screeny:
                 self.app.notify_moving(self)
-                self._x = x
-                self._y = y
+                self.x = x
+                self.y = y
                 self.moved = current
                 self.updated = current
                 self.app.notify_moved(self)
         else:
-            self._x = x
-            self._y = y
+            self.x = x
+            self.y = y
 
     def _get_visible(self):
         return self._visible
@@ -158,10 +151,11 @@ class Actor(object):
 
         We optionally pass x and y to support checking collisions
         on potential locations"""
+        screenx, screeny = self.app.project(x, y)
         if x is None:
-            x = self.x
+            x = screenx
         if y is None:
-            y = self.y
+            y = screeny
         coords = []
         for xoffset in xrange(self.hsize):
             for yoffset in xrange(self.vsize):

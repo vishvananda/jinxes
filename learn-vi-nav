@@ -127,13 +127,14 @@ class ViNav(application.Application):
         self.text = []
         self.display = []
         line = []
+        right = self.width - 1
         for word in words:
             line.append(word)
-            if len(' '.join(line)) >= self.right:
+            if len(' '.join(line)) >= right:
                 text = ' '.join(line[:-1])
-                self.display.append(text + (self.right - len(text)) * ' ')
+                self.display.append(text + (right - len(text)) * ' ')
                 line = [word]
-            if len(self.display) == self.bottom + 1:
+            if len(self.display) == self.height:
                 break
         self.text = ' \n'.join([line.rstrip() for line in self.display])
         self.bg = actor.Actor(self, self.left, self.top, [self.display],
@@ -141,7 +142,7 @@ class ViNav(application.Application):
         self.bg.dirties = False
         self.bg.collides = False
         self.bg.z = 0
-        self.crsr = actor.Actor(self, self.left, self.top, self.CRSR_CHAR,
+        self.crsr = actor.Actor(self, self.x1 / 2, self.y1 / 2, self.CRSR_CHAR,
                                 current, bg=self.CRSR_COLOR)
         self.crsr.transparent = True
         self.crsr.z = 1
@@ -151,8 +152,11 @@ class ViNav(application.Application):
     def spawn_word(self, current):
         text = random.choice(self.word_list)
         text = random.choice((' ' + text, text, text + ' '))
-        y = random.randint(self.top, self.bottom)
-        x = random.randint(self.left, self.right - len(text))
+        word_width = len(text) * 1.0 / self.width
+        halfx = self.x1 / 2
+        halfy = self.y1 / 2
+        x = random.uniform(halfx, 1.0 - halfx - word_width)
+        y = random.uniform(halfy, 1.0 - halfy)
         word = Word(self, x, y, text, current, bg=241,
                     life=random.randint(10, 20))
         word.collides = False
@@ -160,8 +164,9 @@ class ViNav(application.Application):
         word.z = 2
         word.bg = 12
         self.words[word.id] = word
-        line = self.display[word.y]
-        self.display[y] = line[:x] + text + line[x + len(text):]
+        scrx, scry = self.project(x, y)
+        line = self.display[scry]
+        self.display[scry] = line[:scrx] + text + line[scrx + len(text):]
         self.bg.display = [self.display]
         self.text = ' \n'.join([line.rstrip() for line in self.display])
         self.spawned = current
@@ -205,16 +210,16 @@ class ViNav(application.Application):
         self.frequency -= 0.001
 
     def handle_k(self, current):
-        self.crsr.move(current, self.crsr.x, self.crsr.y - 1)
+        self.crsr.move(current, self.crsr.x, self.crsr.y - self.y1)
 
     def handle_j(self, current):
-        self.crsr.move(current, self.crsr.x, self.crsr.y + 1)
+        self.crsr.move(current, self.crsr.x, self.crsr.y + self.y1)
 
     def handle_h(self, current):
-        self.crsr.move(current, self.crsr.x - 1, self.crsr.y)
+        self.crsr.move(current, self.crsr.x - self.x1, self.crsr.y)
 
     def handle_l(self, current):
-        self.crsr.move(current, self.crsr.x + 1, self.crsr.y)
+        self.crsr.move(current, self.crsr.x + self.x1, self.crsr.y)
 
     def handle_q(self, current):
         raise application.Exit()
