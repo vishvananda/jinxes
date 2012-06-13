@@ -211,9 +211,9 @@ class Toasters(application.Application):
         toaster = toaster_class(self, x, y, display, current)
         toaster.bordered = False
         toaster.collides = False
-        toaster.xvel = random.uniform(0.03, 0.06)
-        toaster.yvel = random.uniform(0.03, 0.06)
-        toaster.decay_rate = random.uniform(1.0, 4.0)
+        vel = random.uniform(0.08, 0.12)
+        toaster.xvel, toaster.yvel = vel, vel
+        toaster.decay_rate = random.uniform(1.0, 2.0)
         toaster.frame_rate = 6.0
         self.z += 1
         toaster.z = self.z
