@@ -127,12 +127,12 @@ class ViNav(application.Application):
         self.text = []
         self.display = []
         line = []
-        right = self.width - 1
+        right = self.width
         for word in words:
             line.append(word)
-            if len(' '.join(line)) >= right:
+            if len(' '.join(line)) >= self.width:
                 text = ' '.join(line[:-1])
-                self.display.append(text + (right - len(text)) * ' ')
+                self.display.append(text + (self.width - len(text)) * ' ')
                 line = [word]
             if len(self.display) == self.height:
                 break
@@ -149,11 +149,10 @@ class ViNav(application.Application):
     def spawn_word(self, current):
         text = random.choice(self.word_list)
         text = random.choice((' ' + text, text, text + ' '))
-        word_width = len(text) * 1.0 / self.width
-        halfx = self.x1 / 2
-        halfy = self.y1 / 2
-        x = random.uniform(halfx, 1.0 - halfx - word_width)
-        y = random.uniform(halfy, 1.0 - halfy)
+        half_width = len(text) * 0.5 / self.width
+        half_height = 0.5 / self.height
+        x = random.uniform(half_width, 1.0 - half_width)
+        y = random.uniform(half_height, 1.0 - half_height)
         word = Word(self, x, y, text, current, bg=241,
                     life=random.randint(10, 20), z=1)
         word.collides = False
