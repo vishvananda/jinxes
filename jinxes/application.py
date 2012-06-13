@@ -113,28 +113,13 @@ class Application(object):
         self.width -= 2
         self.height -= 2
 
-    def project(self, actor, x=None, y=None):
-        """Project actor center into top/left app coordinates
-           left, top = 0, 0
-           +---+ > 0.0f = (edge of the screen)
-           |x  | <- 0.00f - 0.33f = 0
-           | o |  <- 0.33f - 0.66f = 1
-           |  x|   <- 0.66f - 1.00f = 2
-           +---+ > 1.0f = 3 (edge of the screen)
-           right, bottom = 2, 2
-           width, height = 3, 3
-        """
-        if x is None:
-            x = actor.x
-        if y is None:
-            y = actor.y
-        # find the actor's top left corner
-        left = x - actor.hsize * 0.5 / self.width
-        top = y - actor.vsize * 0.5 / self.height
-        # move x,y for top left into integer coordintates
-        x = int(left * self.width + 0.5) + self.left
-        y = int(top * self.height + 0.5) + self.top
-        return x, y
+    def project_x(self, x, width):
+        left = x - width * 0.5 / self.width
+        return int(left * self.width + 0.5) + self.left
+
+    def project_y(self, y, height):
+        top = y - height * 0.5 / self.height
+        return int(top * self.height + 0.5) + self.top
 
     @property
     def x1(self):
@@ -176,9 +161,11 @@ class Application(object):
                     actor.yvel = -actor.yvel
                 else:
                     floaty = bottom - halfv
-        x, y = self.project(actor, floatx, floaty)
+        screenx = self.project_x(floatx, actor.hsize)
+        screeny = self.project_y(floaty, actor.vsize)
+
         if actor.collides:
-            actor_collisions = actor.collisions(x, y)
+            actor_collisions = actor.collisions(screenx, screeny)
             all_collisions = {}
             for x, y in actor_collisions:
                 try:
@@ -201,9 +188,8 @@ class Application(object):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
-                    screenx, screeny = self.project(actor)
-                    x = screenx + xoffset
-                    y = screeny + yoffset
+                    x = actor.screenx + xoffset
+                    y = actor.screeny + yoffset
                     if (x >= self.left and x < self.left + self.width
                         and y >= self.top and y < self.top + self.height):
                         self.dirty_by_location[(x, y)] = True
@@ -221,9 +207,8 @@ class Application(object):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
-                    screenx, screeny = self.project(actor)
-                    x = screenx + xoffset
-                    y = screeny + yoffset
+                    x = actor.screenx + xoffset
+                    y = actor.screeny + yoffset
                     if (x >= self.left and x < self.left + self.width
                         and y >= self.top and y < self.top + self.height):
                         self.dirty_by_location[(x, y)] = True
@@ -234,8 +219,9 @@ class Application(object):
         ch, fg, bg = None, None, None
         for actor in reversed(self.actors_by_location[(x, y)]):
             if actor:
-                screenx, screeny = self.project(actor)
-                c, f, b, inv = actor.get_ch(x - screenx, y - screeny)
+                x = x - actor.screenx
+                y = y - actor.screeny
+                c, f, b, inv = actor.get_ch(x, y)
                 if inv:
                     f, b = b, f
                 if ch is None and ord(c) and not actor.transparent:

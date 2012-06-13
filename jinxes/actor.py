@@ -27,9 +27,6 @@ class Actor(object):
                  fg=None, bg=None, inverted=False, z=0):
         self.id = unicode(uuid.uuid4())
         self.app = app
-        self.z = z
-        self.x = x
-        self.y = y
         self._frame = 0.0
         self.fg = fg
         self.bg = bg
@@ -41,6 +38,9 @@ class Actor(object):
         self.yvel = 0.0
         self.collides = True
         self.display = display
+        self.x = x
+        self.y = y
+        self.z = z
         self.app.notify_created(self)
         self.updated = current
         self.visible = True
@@ -114,9 +114,9 @@ class Actor(object):
 
     def move(self, current, x, y):
         x, y = self.app.try_move(self, current, x, y)
-        screenx, screeny = self.app.project(self, x, y)
-        oldx, oldy = self.app.project(self)
-        if oldx != screenx or oldy != screeny:
+        screenx = self.app.project_x(x, self.hsize)
+        screeny = self.app.project_y(y, self.vsize)
+        if self.screenx != screenx or self.screeny != screeny:
                 self.app.notify_moving(self)
                 self.x = x
                 self.y = y
@@ -146,16 +146,33 @@ class Actor(object):
 
     updated = property(_get_updated, _set_updated)
 
+    def _get_x(self):
+        return self._x
+
+    def _set_x(self, value):
+        self._x = value
+        self.screenx = self.app.project_x(self._x, self.hsize)
+
+    x = property(_get_x, _set_x)
+
+    def _get_y(self):
+        return self._y
+
+    def _set_y(self, value):
+        self._y = value
+        self.screeny = self.app.project_y(self._y, self.vsize)
+
+    y = property(_get_y, _set_y)
+
     def collisions(self, x=None, y=None):
         """Returns a set of coordinates to check for collisions.
 
         We optionally pass x and y to support checking collisions
         on potential locations"""
-        screenx, screeny = self.app.project(self)
         if x is None:
-            x = screenx
+            x = self.screenx
         if y is None:
-            y = screeny
+            y = self.screeny
         coords = []
         for xoffset in xrange(self.hsize):
             for yoffset in xrange(self.vsize):

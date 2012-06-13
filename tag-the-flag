@@ -32,11 +32,10 @@ from jinxes import utils
 class Wider(actor.Actor):
     """Actor that collides in a + pattern around location."""
     def collisions(self, x=None, y=None):
-        screenx, screeny = self.app.project(self)
         if x is None:
-            x = screenx
+            x = self.screenx
         if y is None:
-            y = screeny
+            y = self.screeny
         lines = []
         lines.append('\0' + ' ' * self.hsize + '\0')
         for line in self.display:
@@ -138,8 +137,9 @@ class Game(application.Application):
         return actor.id in self.monsters
 
     def collide(self, actor, other, current, collisions, floatx, floaty):
-        screenx, screeny = self.project(actor, floatx, floaty)
-        oscrx, oscry = self.project(other)
+        screenx = self.project_x(floatx, actor.hsize)
+        screeny = self.project_y(floaty, actor.vsize)
+        oscrx, oscry = other.screenx, other.screeny
         if self.is_monster(actor) and self.is_monster(other):
             if screenx == oscrx and screeny == oscry:
                 actor.xvel = -actor.xvel

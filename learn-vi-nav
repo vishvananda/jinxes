@@ -158,7 +158,7 @@ class ViNav(application.Application):
         word.collides = False
         word.ticks = self.ticks % self.UPDATE_TICKS
         self.words[word.id] = word
-        scrx, scry = self.project(word)
+        scrx, scry = word.screenx, word.screeny
         line = self.display[scry]
         self.display[scry] = line[:scrx] + text + line[scrx + len(text):]
         self.bg.display = [self.display]
