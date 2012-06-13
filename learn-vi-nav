@@ -137,7 +137,7 @@ class ViNav(application.Application):
             if len(self.display) == self.height:
                 break
         self.text = ' \n'.join([line.rstrip() for line in self.display])
-        self.bg = actor.Actor(self, self.left, self.top, [self.display],
+        self.bg = actor.Actor(self, 0.5, 0.5, [self.display],
                               current, fg=self.TEXT_COLOR)
         self.bg.collides = False
         self.crsr = actor.Actor(self, self.x1 / 2, self.y1 / 2, self.CRSR_CHAR,
@@ -159,7 +159,7 @@ class ViNav(application.Application):
         word.collides = False
         word.ticks = self.ticks % self.UPDATE_TICKS
         self.words[word.id] = word
-        scrx, scry = self.project(x, y)
+        scrx, scry = self.project(word)
         line = self.display[scry]
         self.display[scry] = line[:scrx] + text + line[scrx + len(text):]
         self.bg.display = [self.display]

@@ -227,7 +227,8 @@ class Toasters(application.Application):
             self.spawn_toaster(current)
         self.num_to_spawn -= int(self.num_to_spawn)
         for actor in list(self.actors.itervalues()):
-            if actor.x > 1.0 or actor.y > 1.0:
+            if (actor.x > 1.0 + actor.hsize * 0.5 / self.width
+                or actor.y > 1.0 + actor.vsize * 0.5 / self.height):
                 actor.destroy()
 
     def handle_q(self, current):

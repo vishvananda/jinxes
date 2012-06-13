@@ -114,8 +114,8 @@ class Actor(object):
 
     def move(self, current, x, y):
         x, y = self.app.try_move(self, current, x, y)
-        screenx, screeny = self.app.project(x, y)
-        oldx, oldy = self.app.project(self.x, self.y)
+        screenx, screeny = self.app.project(self, x, y)
+        oldx, oldy = self.app.project(self)
         if oldx != screenx or oldy != screeny:
                 self.app.notify_moving(self)
                 self.x = x
@@ -151,7 +151,7 @@ class Actor(object):
 
         We optionally pass x and y to support checking collisions
         on potential locations"""
-        screenx, screeny = self.app.project(x, y)
+        screenx, screeny = self.app.project(self)
         if x is None:
             x = screenx
         if y is None:

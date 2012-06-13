@@ -113,8 +113,8 @@ class Application(object):
         self.width -= 2
         self.height -= 2
 
-    def project(self, floatx, floaty):
-        """Project x, y in the range of 0 - 1 into app coordinates
+    def project(self, actor, x=None, y=None):
+        """Project actor center into top/left app coordinates
            left, top = 0, 0
            +---+ > 0.0f = (edge of the screen)
            |x  | <- 0.00f - 0.33f = 0
@@ -124,15 +124,17 @@ class Application(object):
            right, bottom = 2, 2
            width, height = 3, 3
         """
-        x = int(floatx * self.width) + self.left
-        y = int(floaty * self.height) + self.top
+        if x is None:
+            x = actor.x
+        if y is None:
+            y = actor.y
+        # find the actor's top left corner
+        left = x - actor.hsize * 0.5 / self.width
+        top = y - actor.vsize * 0.5 / self.height
+        # move x,y for top left into integer coordintates
+        x = int(left * self.width + 0.5) + self.left
+        y = int(top * self.height + 0.5) + self.top
         return x, y
-
-    def unproject(self, x, y):
-        """Unproject x, y in app coordinates into the range of 0 - 1"""
-        floatx = x - self.left / self.width
-        floaty = y - self.top / self.height
-        return floatx, floaty
 
     @property
     def x1(self):
@@ -144,33 +146,37 @@ class Application(object):
 
     def try_move(self, actor, current, floatx, floaty):
         if actor.bordered:
-            hsize = actor.hsize * 1.0 / self.width
-            vsize = actor.vsize * 1.0 / self.height
-            if floatx < 0.0:
+            halfh = actor.hsize * 0.5 / self.width
+            halfv = actor.vsize * 0.5 / self.height
+            left = 0.0
+            top = 0.0
+            right = 1.0
+            bottom = 1.0
+            if floatx < left + halfh:
                 if actor.xvel:
-                    floatx = -floatx
+                    floatx = (left + halfh) * 2 - floatx
                     actor.xvel = -actor.xvel
                 else:
-                    floatx = self.x1 / 2
-            elif floatx + hsize > 1.0:
+                    floatx = left + halfh
+            elif floatx > right - halfh:
                 if actor.xvel:
-                    floatx = 2.0 - floatx - hsize - hsize
+                    floatx = (right - halfh) * 2 - floatx
                     actor.xvel = -actor.xvel
                 else:
-                    floatx = 1.0 - hsize + self.x1 / 2
-            if floaty < 0.0:
+                    floatx = right - halfh
+            if floaty < top + halfv:
                 if actor.yvel:
-                    floaty = -floaty
+                    floaty = (top + halfv) * 2 - floaty
                     actor.yvel = -actor.yvel
                 else:
-                    floaty = self.y1 / 2
-            elif floaty + vsize > 1.0:
+                    floaty = top + halfv
+            elif floaty > bottom - halfv:
                 if actor.yvel:
-                    floaty = 2.0 - floaty - vsize - vsize
+                    floaty = (bottom - halfv) * 2 - floaty
                     actor.yvel = -actor.yvel
                 else:
-                    floaty = 1.0 - vsize + self.y1 / 2
-        x, y = self.project(floatx, floaty)
+                    floaty = bottom - halfv
+        x, y = self.project(actor, floatx, floaty)
         if actor.collides:
             actor_collisions = actor.collisions(x, y)
             all_collisions = {}
@@ -195,7 +201,7 @@ class Application(object):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
-                    screenx, screeny = self.project(actor.x, actor.y)
+                    screenx, screeny = self.project(actor)
                     x = screenx + xoffset
                     y = screeny + yoffset
                     if (x >= self.left and x < self.left + self.width
@@ -215,7 +221,7 @@ class Application(object):
         for xoffset in xrange(actor.hsize):
             for yoffset in xrange(actor.vsize):
                 if ord(actor.get_ch(xoffset, yoffset)[0]):
-                    screenx, screeny = self.project(actor.x, actor.y)
+                    screenx, screeny = self.project(actor)
                     x = screenx + xoffset
                     y = screeny + yoffset
                     if (x >= self.left and x < self.left + self.width
@@ -228,7 +234,7 @@ class Application(object):
         ch, fg, bg = None, None, None
         for actor in reversed(self.actors_by_location[(x, y)]):
             if actor:
-                screenx, screeny = self.project(actor.x, actor.y)
+                screenx, screeny = self.project(actor)
                 c, f, b, inv = actor.get_ch(x - screenx, y - screeny)
                 if inv:
                     f, b = b, f
